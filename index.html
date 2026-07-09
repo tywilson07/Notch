@@ -2458,6 +2458,7 @@ function buildProgramModal(prog){
       const setType = typeof ex === 'object' ? (ex.setType||'weight') : 'weight';
       const typeBtn = (val, label, color) =>
         `<button class="set-type-btn ${setType===val?'active':''}"
+          data-val="${val}" data-color="${color}"
           style="${setType===val?`background:${color};border-color:${color};color:#fff`:''};font-size:10px;padding:2px 6px"
           onclick="cpSetType(${dayIdx},'${section}',${ei},'${val}',this)">${label}</button>`;
       const typeSel = section==='exercises' ? `<div style="display:flex;gap:3px;margin-top:3px">
@@ -2590,18 +2591,16 @@ function cpDayField(i,field,val){if(_cpDays[i])_cpDays[i][field]=val;}
 
 // Exercise row helpers
 function cpSetType(dayIdx, section, exIdx, val, btn) {
-  // Update data
   cpExField(dayIdx, section, exIdx, 'setType', val);
-  // Update button styles in-place — no rebuild needed
   const row = btn.closest('.cp-ex-row');
   if (!row) return;
-  const colors = {weight:'var(--orange)', bodyweight:'var(--lime)', assisted:'var(--purple)'};
   row.querySelectorAll('.set-type-btn').forEach(b => {
-    const bVal = b.getAttribute('onclick')?.match(/cpSetType\([^,]+,[^,]+,[^,]+,'([^']+)'/)?.[1];
+    const bVal = b.dataset.val;
+    const bColor = b.dataset.color || 'var(--orange)';
     const isActive = bVal === val;
     b.classList.toggle('active', isActive);
-    b.style.background = isActive ? colors[val]||'var(--orange)' : '';
-    b.style.borderColor = isActive ? colors[val]||'var(--orange)' : '';
+    b.style.background = isActive ? bColor : '';
+    b.style.borderColor = isActive ? bColor : '';
     b.style.color = isActive ? '#fff' : '';
   });
 }
@@ -2673,11 +2672,7 @@ function cpSyncAll() {
         // setType is already kept current in _cpDays by cpSetType — just preserve it
         const existingEx = (day[section]||[]).find(e=>e.name===nameEl?.value?.trim());
         const activeBtn = row.querySelector('.set-type-btn.active');
-        const setType = activeBtn
-          ? (activeBtn.getAttribute('onclick')?.includes("'bodyweight'") ? 'bodyweight'
-            : activeBtn.getAttribute('onclick')?.includes("'assisted'") ? 'assisted'
-            : 'weight')
-          : (existingEx?.setType || 'weight');
+        const setType = activeBtn?.dataset?.val || existingEx?.setType || 'weight';
         return {
           name: nameEl?.value?.trim()||'',
           sets: setsEl?.value||'',
