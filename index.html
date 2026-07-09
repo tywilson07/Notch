@@ -2459,7 +2459,7 @@ function buildProgramModal(prog){
       const typeBtn = (val, label, color) =>
         `<button class="set-type-btn ${setType===val?'active':''}"
           style="${setType===val?`background:${color};border-color:${color};color:#fff`:''};font-size:10px;padding:2px 6px"
-          onclick="cpExField(${dayIdx},'${section}',${ei},'setType','${val}');buildProgramModal()">${label}</button>`;
+          onclick="cpExField(${dayIdx},'${section}',${ei},'setType','${val}');cpSyncAll();buildProgramModal()">${label}</button>`;
       const typeSel = section==='exercises' ? `<div style="display:flex;gap:3px;margin-top:3px">
         ${typeBtn('weight','Weight','var(--orange)')}
         ${typeBtn('bodyweight','BW','var(--lime)')}
@@ -2541,14 +2541,19 @@ function buildProgramModal(prog){
     </div>`;
   }).join('');
 
-  const tagOpts = ['Strength','Cardio','Powerlifting','Custom'].map(t=>`<option ${prog?.tag===t?'selected':''}>${t}</option>`).join('');
+  // Preserve current field values when re-rendering (avoid wiping name/weeks on rebuild)
+  const curName = document.getElementById('cp-name')?.value ?? prog?.name ?? '';
+  const curWeeks = document.getElementById('cp-weeks')?.value ?? prog?.weeks ?? 8;
+  const curTag = document.getElementById('cp-tag')?.value ?? prog?.tag ?? 'Custom';
+  const curDesc = document.getElementById('cp-desc')?.value ?? prog?.description ?? '';
+  const tagOpts = ['Strength','Cardio','Powerlifting','Custom'].map(t=>`<option ${(curTag||prog?.tag)===t?'selected':''}>${t}</option>`).join('');
   document.getElementById('modal-body').innerHTML=`
-    <div class="field"><label>Program Name</label><input id="cp-name" value="${prog?.name||''}" placeholder="e.g. My Training Block"></div>
+    <div class="field"><label>Program Name</label><input id="cp-name" value="${curName}" placeholder="e.g. My Training Block"></div>
     <div class="row">
-      <div class="field"><label>Weeks</label><input id="cp-weeks" type="number" value="${prog?.weeks||8}" min="1" max="52"></div>
+      <div class="field"><label>Weeks</label><input id="cp-weeks" type="number" value="${curWeeks||8}" min="1" max="52"></div>
       <div class="field"><label>Tag</label><select id="cp-tag">${tagOpts}</select></div>
     </div>
-    <div class="field"><label>Description</label><textarea id="cp-desc" rows="2">${prog?.description||''}</textarea></div>
+    <div class="field"><label>Description</label><textarea id="cp-desc" rows="2">${curDesc}</textarea></div>
     <div class="divider"></div>
     <div id="cp-days">${daysHtml||'<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Add workout days below.</div>'}</div>
     <button class="btn btn-ghost btn-sm" onclick="addCPDay()" style="margin-top:6px">+ Add Day</button>`;
@@ -2580,7 +2585,7 @@ function addCPDay(){
   } : null;
   buildProgramModal(currentProg);
 }
-function removeCPDay(i){_cpDays.splice(i,1);buildProgramModal(null);}
+function removeCPDay(i){cpSyncAll();_cpDays.splice(i,1);buildProgramModal(null);}
 function cpDayField(i,field,val){if(_cpDays[i])_cpDays[i][field]=val;}
 
 // Exercise row helpers
@@ -2650,8 +2655,8 @@ function cpSyncAll() {
         // Find active setType button
         const activeTypeBtn = row.querySelector('.set-type-btn.active');
         const setType = activeTypeBtn
-          ? (activeTypeBtn.textContent.trim().toLowerCase().includes('bw') ? 'bodyweight'
-            : activeTypeBtn.textContent.trim().toLowerCase().includes('assisted') ? 'assisted'
+          ? (activeTypeBtn.onclick?.toString().includes("'bodyweight'") || activeTypeBtn.getAttribute('onclick')?.includes("'bodyweight'") ? 'bodyweight'
+            : activeTypeBtn.onclick?.toString().includes("'assisted'") || activeTypeBtn.getAttribute('onclick')?.includes("'assisted'") ? 'assisted'
             : 'weight')
           : (day[section]?.find?.(e=>e.name===nameEl?.value?.trim())?.setType || 'weight');
         return {
