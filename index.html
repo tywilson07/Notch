@@ -238,8 +238,8 @@ label{font-size:11px;font-weight:800;color:var(--text-muted);display:block;margi
 .error-msg{background:var(--red-light);color:var(--red);border-radius:var(--radius-sm);padding:10px 13px;font-size:13px;margin-bottom:12px;border:1px solid #FECACA}
 
 /* ── TOAST ── */
-#toast{position:fixed;bottom:calc(var(--nav-h) + 12px);left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface3);color:var(--text-primary);padding:10px 18px;border-radius:var(--radius);font-size:12.5px;font-weight:800;z-index:999;transition:transform .25s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;box-shadow:var(--shadow-md);border:1px solid var(--border-strong);text-transform:uppercase;letter-spacing:.5px}
-#toast.show{transform:translateX(-50%) translateY(0)}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--surface3);color:var(--text-primary);padding:10px 18px;border-radius:var(--radius);font-size:12.5px;font-weight:800;z-index:1200;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .25s;white-space:nowrap;box-shadow:var(--shadow-md);border:1px solid var(--border-strong);text-transform:uppercase;letter-spacing:.5px;pointer-events:none;opacity:0}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 
 /* ── CHARTS ── */
 .chart-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px}
@@ -808,9 +808,18 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
   </div>
   <!-- Current exercise body -->
   <div class="wm-body" id="wm-body"></div>
+  <!-- Notes panel (collapsible) -->
+  <div id="wm-notes-panel" style="display:none;padding:8px 16px;background:var(--surface);border-top:1px solid var(--border)">
+    <div id="wm-prev-notes-hint"></div>
+    <textarea id="wm-notes-input" rows="2" placeholder="Notes for this workout..."
+      style="font-size:13px;resize:none;width:100%"
+      oninput="syncWMNotes(this.value)"></textarea>
+  </div>
   <!-- Footer nav -->
   <div class="wm-footer">
     <button class="btn btn-white" id="wm-prev-btn" onclick="wmNavigate(-1)" style="flex:1">‹ Prev</button>
+    <button class="btn btn-ghost btn-sm" onclick="toggleWMNotes()" title="Notes" style="padding:0 10px">📝</button>
+    <button class="btn btn-ghost btn-sm" onclick="openPlateCalc()" title="Plate calculator" style="padding:0 10px">🔢</button>
     <button class="btn btn-primary" id="wm-next-btn" onclick="wmNavigate(1)" style="flex:2">Next ›</button>
   </div>
 </div>
@@ -1502,16 +1511,17 @@ function getProgressionSuggestion(name, setIdx, targetReps) {
   }
 
   // Progression logic:
-  // - Hit top of range (or met/exceeded target reps) → add 5lb, reset reps to lower bound
-  // - Didn't hit target yet → same weight, suggest same reps as a nudge
+  // - Hit top of range → add 5lb, reset to lower bound
+  // - No target but did 10+ reps → add 5lb (strong signal to increase)
+  // - Otherwise → same weight, same reps as nudge
   const hitTarget = targetUpper > 0
     ? prevR >= targetUpper
     : targetLower > 0
       ? prevR >= targetLower
-      : false; // no target — don't suggest increase without data
+      : prevR >= 10; // no target — suggest increase after 10+ reps
 
   const suggestedW = (prevW > 0 && hitTarget) ? prevW + 5 : prevW;
-  const suggestedR = (prevW > 0 && hitTarget && targetLower > 0) ? targetLower : prevR;
+  const suggestedR = hitTarget && targetLower > 0 ? targetLower : prevR;
 
   return {
     w: suggestedW,
@@ -1783,12 +1793,12 @@ function buildStrengthInner(ex,ei){
     const suggestion = (!s.w && !s.r) ? getProgressionSuggestion(ex.name, si, ex.targetReps) : null;
     const wPlaceholder = suggestion
       ? (suggestion.bw
-          ? (suggestion.w ? `+${suggestion.w}lb` : 'BW')
-          : suggestion.isIncrease
-            ? `${suggestion.w} ↑`
-            : `${suggestion.w}`)
+          ? (suggestion.w ? `+${suggestion.w}` : '0')
+          : suggestion.w > 0
+            ? `${suggestion.w}${suggestion.isIncrease?' ↑':''}`
+            : 'lb')
       : (isBW ? '0' : 'lb');
-    const rPlaceholder = suggestion ? `${suggestion.r}` : 'reps';
+    const rPlaceholder = suggestion && suggestion.r > 0 ? `${suggestion.r}` : 'reps';
     let weightCell;
     if (isBW) {
       weightCell = `<td>
@@ -2598,8 +2608,12 @@ function modalOutsideClick(e){if(e.target===document.getElementById('modal'))clo
 let _tt;
 function toast(msg){
   const el=document.getElementById('toast');
-  el.textContent=msg;el.classList.add('show');
-  clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2600);
+  el.textContent=msg;
+  el.classList.remove('show');
+  void el.offsetWidth; // force reflow for animation reset
+  el.classList.add('show');
+  clearTimeout(_tt);
+  _tt=setTimeout(()=>el.classList.remove('show'),2500);
 }
 
 // ═══════════════════════════════════════════════════
@@ -2972,6 +2986,20 @@ function startWorkoutMode() {
   _wmCurrentIdx=0;
   document.getElementById('workout-mode').classList.add('show');
   acquireWakeLock();
+  // Populate notes panel
+  const notesInput = document.getElementById('wm-notes-input');
+  const logNotes = document.getElementById('log-notes');
+  if (notesInput && logNotes) notesInput.value = logNotes.value||'';
+  const hintEl = document.getElementById('wm-prev-notes-hint');
+  if (hintEl) {
+    const prevNote = _prevSectionNotes?.main || _prevNotes || '';
+    hintEl.innerHTML = prevNote
+      ? `<div class="notes-hint" style="margin-bottom:6px;font-size:12px">
+          <span class="notes-hint-icon">📝</span>
+          <div><strong>Last time:</strong> ${prevNote}</div>
+        </div>`
+      : '';
+  }
   renderWorkoutMode();
 }
 
@@ -3073,32 +3101,59 @@ function wmToggleSimple(ei){
 }
 
 function buildWMStrength(ex,ei){
-  const sm={warmup:{label:'Warm-Up',color:'#D97706'},main:{label:'Main Workout',color:'#2563EB'},cooldown:{label:'Cool Down',color:'#16A34A'}}[ex.section||'main']||{label:'Main Workout',color:'#2563EB'};
+  const sm={warmup:{label:'Warm-Up',color:'#D97706'},main:{label:'Main Workout',color:'#FF5C00'},cooldown:{label:'Cool Down',color:'#AAFF00'}}[ex.section||'main']||{label:'Main Workout',color:'#FF5C00'};
   const prevBest=getPrevBest(ex.name);
   const targetHint = ex.targetSets && ex.targetReps
-    ? `<span style="font-size:10.5px;color:var(--blue);margin-left:6px;font-family:var(--mono)">Target: ${ex.targetSets}×${ex.targetReps}</span>`
+    ? `<span style="font-size:10.5px;color:var(--orange);margin-left:6px;font-family:var(--mono)">Target: ${ex.targetSets}×${ex.targetReps}</span>`
     : '';
+  const cues = getFormCues(ex.name);
+  const cueElId = `wm-cues-${ei}`;
+  const cuesHtml = cues ? `
+    <details style="margin-bottom:12px">
+      <summary style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px">
+        <span>📋</span><span>Form Cues</span>
+      </summary>
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+        ${cues.map(cue=>`<div style="font-size:12.5px;color:var(--text-secondary);padding:6px 10px;background:var(--surface2);border-radius:5px;border-left:3px solid var(--orange)">• ${cue}</div>`).join('')}
+      </div>
+    </details>` : `
+    <details style="margin-bottom:12px" ontoggle="if(this.open)loadWMCues(this,'${ex.name.replace(/'/g,"\\'")}')">
+      <summary style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px">
+        <span>📋</span><span>Form Cues</span><span style="font-size:10px;color:var(--text-muted);margin-left:4px">(tap to load)</span>
+      </summary>
+      <div id="${cueElId}" style="margin-top:8px;font-size:12px;color:var(--text-muted);padding:6px">Loading...</div>
+    </details>`;
   const rows=(ex.sets||[]).map((s,si)=>{
     const prev=getPrevSetResult(ex.name,si);
+    const suggestion = (!s.w && !s.r) ? getProgressionSuggestion(ex.name, si, ex.targetReps) : null;
+    const wPh = suggestion
+      ? (suggestion.bw
+          ? (suggestion.w ? `+${suggestion.w}` : '0')
+          : suggestion.w > 0
+            ? `${suggestion.w}${suggestion.isIncrease?' ↑':''}`
+            : 'lb')
+      : 'lb';
+    const rPh = suggestion && suggestion.r > 0 ? `${suggestion.r}` : 'reps';
     const isActive=!s.done&&(si===0||(ex.sets[si-1]?.done));
     return `<div class="wm-set-row ${isActive?'active-set':''} ${s.done?'done-set':''}" id="wm-set-${si}">
       <div class="wm-set-num">Set ${si+1}</div>
       <div class="wm-set-prev">${prev||'—'}</div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        <input class="wm-input" type="number" placeholder="lb" value="${s.w||''}" oninput="wmSyncSet(${ei},${si},'w',this.value)" step="2.5" min="0" inputmode="decimal">
+        <input class="wm-input" type="number" placeholder="${wPh}" value="${s.w||''}" oninput="wmSyncSet(${ei},${si},'w',this.value)" step="2.5" min="0" inputmode="decimal">
         <div class="wm-input-label">Weight</div>
       </div>
       <div style="color:var(--text-muted);font-size:18px;font-weight:300">×</div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        <input class="wm-input" type="number" placeholder="reps" value="${s.r||''}" oninput="wmSyncSet(${ei},${si},'r',this.value)" min="0" inputmode="decimal">
+        <input class="wm-input" type="number" placeholder="${rPh}" value="${s.r||''}" oninput="wmSyncSet(${ei},${si},'r',this.value)" min="0" inputmode="decimal">
         <div class="wm-input-label">Reps</div>
       </div>
       <button class="wm-check-btn ${s.done?'done':''}" onclick="wmToggleSet(${ei},${si})">${s.done?'✓':''}</button>
     </div>`;
   }).join('');
   return `<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:${sm.color};margin-bottom:8px">${sm.label}</div>
-    <div class="wm-ex-name">${ex.name}</div>
+    <div class="wm-ex-name">${ex.name}${targetHint}</div>
     <div class="wm-ex-meta">${ex.sets?.length||0} sets${prevBest?` · Best: ${prevBest}`:''}</div>
+    ${cuesHtml}
     ${rows}
     <button class="btn btn-ghost btn-sm" onclick="wmAddSet(${ei})" style="margin-top:8px">+ Add Set</button>`;
 }
@@ -3171,6 +3226,200 @@ function wmToggleCardio(ei){
     else     wmNavigate(-1); // swipe right = prev
   }, {passive:true});
 })();
+
+function toggleWMNotes() {
+  const panel = document.getElementById('wm-notes-panel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) document.getElementById('wm-notes-input')?.focus();
+}
+
+function syncWMNotes(val) {
+  // Keep log modal notes in sync
+  const logNotes = document.getElementById('log-notes');
+  if (logNotes) logNotes.value = val;
+  _savedSectionNotes.main = val;
+}
+
+// ── PLATE CALCULATOR ──
+function openPlateCalc() {
+  document.getElementById('modal-title').textContent = '🔢 Plate Calculator';
+  document.getElementById('modal-body').innerHTML = `
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">Bar Weight</label>
+      <div style="display:flex;gap:8px">
+        <button class="builder-option selected" id="bar-45" onclick="selectBar(45,this)" style="flex:1;padding:8px">45 lb<br><span style="font-size:10px;color:var(--text-muted)">Standard</span></button>
+        <button class="builder-option" id="bar-35" onclick="selectBar(35,this)" style="flex:1;padding:8px">35 lb<br><span style="font-size:10px;color:var(--text-muted)">Women's</span></button>
+        <button class="builder-option" id="bar-15" onclick="selectBar(15,this)" style="flex:1;padding:8px">15 lb<br><span style="font-size:10px;color:var(--text-muted)">Training</span></button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Target Weight (lb)</label>
+      <input id="plate-target" type="number" placeholder="225" inputmode="decimal"
+        style="font-size:24px;font-family:var(--mono);text-align:center;font-weight:700"
+        oninput="calcPlates()">
+    </div>
+    <div id="plate-result" style="margin-top:14px"></div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-primary btn-full" onclick="closeModal();document.getElementById('workout-mode').classList.add('show')">Done</button>`;
+  window._barWeight = 45;
+  showModal();
+}
+
+function selectBar(weight, btn) {
+  window._barWeight = weight;
+  document.querySelectorAll('#bar-45,#bar-35,#bar-15').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  calcPlates();
+}
+
+function calcPlates() {
+  const target = parseFloat(document.getElementById('plate-target')?.value)||0;
+  const bar = window._barWeight||45;
+  const result = document.getElementById('plate-result');
+  if (!target || target <= bar) {
+    result.innerHTML = target && target <= bar
+      ? `<div style="color:var(--text-muted);text-align:center;font-size:13px">Just the bar (${bar} lb)</div>`
+      : '';
+    return;
+  }
+  const perSide = (target - bar) / 2;
+  const plates = [45,35,25,10,5,2.5];
+  let remaining = perSide;
+  const used = [];
+  for (const plate of plates) {
+    const count = Math.floor(remaining / plate);
+    if (count > 0) { used.push({plate, count}); remaining -= count * plate; }
+  }
+  remaining = Math.round(remaining * 10) / 10;
+  const platesHtml = used.map(({plate,count}) =>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:5px">
+      <span style="font-size:16px;font-weight:800;font-family:var(--mono)">${plate} lb</span>
+      <span style="font-size:14px;color:var(--orange);font-weight:700">× ${count} per side</span>
+    </div>`
+  ).join('');
+  result.innerHTML = `
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:8px">
+      Each side of the bar:
+    </div>
+    ${platesHtml}
+    ${remaining > 0 ? `<div style="font-size:11.5px;color:var(--red);margin-top:6px">⚠ ${remaining} lb unaccounted — use smaller plates</div>` : ''}
+    <div style="text-align:center;margin-top:10px;padding:8px;background:var(--orange-dim);border-radius:var(--radius-sm);font-size:13px;font-weight:700">
+      Total: ${target} lb = ${bar} lb bar + ${perSide} lb × 2 sides
+    </div>`;
+}
+
+// ── FORM CUES ──
+const FORM_CUES = {
+  // Chest
+  'Bench Press': ['Retract your shoulder blades and keep them pinched throughout','Bar should touch your lower chest, not your neck','Keep feet flat on the floor, slight arch in lower back','Drive the bar up and slightly back toward your face'],
+  'Incline Bench Press': ['Set bench to 30-45 degrees — higher loses chest emphasis','Retract shoulder blades hard before unracking','Bar touches upper chest, not your collar bone','Control the descent — about 2 seconds down'],
+  'Dumbbell Bench Press': ['Start with dumbbells on your knees, kick them up as you lie back','Neutral or slight outward angle at the elbow (not 90 degrees out)','Squeeze the chest at the top — imagine bending the dumbbells toward each other','Touch the dumbbells lightly at the top, don\'t let them crash'],
+  'Incline Dumbbell Bench Press': ['Bench at 30-45 degrees','Let dumbbells travel in a slight arc, not straight up','Squeeze upper chest hard at the top','Control the negative — slow down builds more muscle'],
+  'Push-Ups': ['Hands slightly wider than shoulders, fingers forward','Keep a straight line from head to heels — no sagging hips','Lower chest to within an inch of the floor','Elbows at about 45 degrees, not flared out'],
+  'Cable Fly': ['Use a weight you can control through the full arc','Slight bend in the elbows — maintain it throughout','Bring hands together in front of your chest, not above it','Squeeze the chest hard at the peak and hold briefly'],
+  'Chest Dip': ['Lean forward to target chest over triceps','Go deep — upper arms should be parallel to the floor','Come all the way up but don\'t lock elbows hard','Keep elbows tracking back, not flaring wide'],
+  // Back
+  'Deadlift': ['Bar over mid-foot, hip-width stance','Hinge at the hips, push the floor away — don\'t pull with your back','Keep bar close to your body the entire way up','Lock out hips and knees together at the top — don\'t hyperextend'],
+  'Barbell Row': ['Hinge to about 45 degrees, knees soft','Pull bar to your lower chest/upper stomach','Drive elbows back and squeeze shoulder blades together','Lower with control — don\'t let it drop'],
+  'Dumbbell Row': ['Support with opposite hand and knee on bench','Let the dumbbell hang, then row to your hip (not your armpit)','Think about pulling with your elbow, not your hand','Full stretch at the bottom — let the shoulder blade protract'],
+  'Pull-Ups': ['Start from a dead hang with shoulder blades depressed','Pull elbows down and back — think about touching your elbows to your hips','Chin over bar, then lower all the way back to dead hang','No kipping — controlled movement builds real strength'],
+  'Chin-Ups': ['Underhand grip, shoulder width','Elbows stay close to your sides throughout','Focus on squeezing your back, not just pulling with your biceps','Full range — dead hang to chin over bar'],
+  'Lat Pulldown': ['Grip slightly wider than shoulder width','Lean back slightly — maybe 10-15 degrees','Pull bar to your upper chest while squeezing lats','Control the ascent — let arms fully extend before next rep'],
+  'Seated Cable Row': ['Sit tall, slight forward lean to start, pull to upright','Drive elbows back past your torso','Squeeze shoulder blades together hard at the peak','Reach forward with control — stretch the lats'],
+  'Face Pull': ['Set cable at upper-chest to eye height','Pull to your face, elbows flared HIGH — above shoulder height','External rotate at the end — hands end up by your ears','Light weight, full control — this is a shoulder health exercise'],
+  'T-Bar Row': ['Neutral spine, hinge at the hips','Pull to your lower chest/upper abs','Squeeze the middle of your back — retract those shoulder blades','Don\'t use momentum — full control both directions'],
+  'Assisted Pull-Ups': ['Same technique as regular pull-ups — don\'t let the assistance make you lazy','Full dead hang at the bottom, chin over bar at the top','Reduce the assistance weight as you get stronger','Focus on feeling the lats — this is skill practice for unassisted pull-ups'],
+  // Legs
+  'Back Squat': ['Bar sits on traps (high bar) or rear deltoids (low bar)','Stance shoulder-width or slightly wider, toes out 15-30 degrees','Break at hips and knees simultaneously','Hit parallel or below — depth is non-negotiable for full development'],
+  'Front Squat': ['Bar rests on front deltoids, elbows up high','More upright torso than back squat — stay tall','Knees track over toes aggressively','Challenging for mobility — work on wrist and ankle flexibility'],
+  'Romanian Deadlift': ['Soft bend in knees — this is a hip hinge, not a squat','Push hips back as you lower, keeping bar close to legs','Feel a deep stretch in the hamstrings at the bottom','Drive hips forward to stand — squeeze glutes at the top'],
+  'Leg Press': ['Feet shoulder-width, positioned so knees don\'t cave in','Don\'t lock your knees at the top — keep slight tension','Don\'t let your lower back round off the pad at the bottom','Controlled descent is where the growth happens'],
+  'Leg Curl': ['Don\'t let your hips rise off the pad as you curl','Squeeze the hamstrings hard at peak contraction','Slow on the way down — 2-3 second negative','Full extension between reps'],
+  'Leg Extension': ['Sit tall, don\'t let hips lift off seat','Full extension and squeeze at the top','Slow controlled descent — don\'t let the weight pull your legs down','Point toes slightly inward to bias the VMO (inner quad)'],
+  'Bulgarian Split Squat': ['Back foot elevated on a bench, front foot far enough forward','Lower straight down — most of the weight through the front heel','Front knee tracks over toes — don\'t let it cave in','This will feel hard — it\'s one of the best leg exercises there is'],
+  'Calf Raises': ['Full range of motion — deep stretch at the bottom, all the way up on toes','Calves respond well to slow controlled reps and high volume','Pause at the top and squeeze','Don\'t bounce at the bottom — control the stretch'],
+  'Hip Thrust': ['Bar padded and across your hips, upper back on bench','Drive through your heels and squeeze your glutes hard at the top','Your shins should be roughly vertical at the top position','Don\'t hyperextend your lower back — it\'s a glute exercise'],
+  'Walking Lunges': ['Long stride so front shin stays vertical','Back knee drops close to but doesn\'t touch the floor','Torso upright — don\'t lean forward','Drive through front heel to step through'],
+  // Shoulders
+  'Overhead Press': ['Bar starts at upper chest/chin level','Press straight up — bar travels slightly back as it clears your head','Lock out overhead with biceps by ears','Core tight throughout — don\'t hyperextend your lower back'],
+  'Dumbbell Shoulder Press': ['Can be done seated or standing — standing is harder and more functional','Dumbbells start at ear height, press to neutral at top','Don\'t flare elbows too wide — slight angle forward protects the shoulder','Full lockout at the top, controlled descent'],
+  'Lateral Raise': ['Slight bend in elbow throughout','Lead with your elbows, not your hands','Stop at shoulder height — going higher shifts to traps','The weight should be light — this is an isolation exercise'],
+  'Cable Lateral Raise': ['Cable keeps tension throughout the range unlike dumbbells','Lean slightly away from the cable for better resistance curve','Stop at shoulder height, squeeze the delt','Slow and controlled — momentum defeats the purpose'],
+  'Front Raise': ['Palms facing down or neutral (thumbs up)','Raise to shoulder height only — not above','Slight bend in the elbow','Alternate arms or do both — both work fine'],
+  'Rear Delt Fly': ['Hinge forward to near parallel with the floor','Arms out to sides with slight elbow bend — like a reverse hug','Squeeze shoulder blades together and rear delts at the top','Very light weight — this muscle is often undertrained'],
+  // Arms
+  'Barbell Curl': ['Keep elbows pinned at your sides throughout','Full range — start with arms nearly straight, curl to peak contraction','No swinging — your torso shouldn\'t move','Slow negative — lower in 2-3 seconds'],
+  'Dumbbell Curl': ['Can be done alternating or together','Supinate (rotate palm up) as you curl for full bicep contraction','Don\'t swing or lean back at the top','Touch the dumbbell to your shoulder at the top'],
+  'Hammer Curl': ['Palms facing each other (neutral grip) throughout','Targets the brachialis and brachioradialis more than the bicep','Elbows stay at sides — same as regular curl','Can be done alternating or together'],
+  'Cable Curl': ['Set the cable low — this keeps tension at the top where dumbbells lose it','Keep elbows at your sides','Squeeze hard at the top of the movement','Great as a finishing exercise after barbell or dumbbell curls'],
+  'Tricep Pushdown': ['Cable set high, use rope or bar attachment','Elbows stay pinned at your sides — they should not move at all','Full extension at the bottom — lock out and squeeze','Control the weight back up — don\'t let it pull your arms up'],
+  'Skull Crushers': ['Bar comes down to your forehead (hence the name — be careful)','Elbows stay pointing at the ceiling throughout','Full extension at the top without locking elbows aggressively','Can use EZ bar, straight bar, or dumbbells'],
+  'Overhead Tricep Extension': ['One or two dumbbells held overhead','Elbows stay pointed forward — don\'t let them flare wide','Lower behind your head and fully extend back up','Great for the long head of the tricep — often undertrained'],
+  'Dips': ['Tricep dips: stay upright, elbows close to body','Chest dips: lean forward, elbows out — very different exercise','Lower until upper arms are parallel to the floor','Full lockout at the top — squeeze the triceps'],
+  'Assisted Dips': ['Same technique as regular dips — the assistance just makes it lighter','More assistance = easier, reduce it over time as you get stronger','Control the movement — don\'t let the machine bounce you','Work toward bodyweight dips as your goal'],
+  // Core
+  'Plank': ['Forearms on the ground, elbows under shoulders','Squeeze everything — glutes, abs, quads','Keep a straight line from head to heels — no sagging or piking','Breathe normally — don\'t hold your breath'],
+  'Ab Wheel': ['Start on knees — don\'t go to full standing until you\'re strong','Roll out as far as you can while keeping your lower back flat','Pull back using your abs, not your lower back','This is harder than it looks — start with a short range of motion'],
+  'Cable Crunch': ['Kneel in front of the cable, rope behind your head','Crunch DOWN — your hips don\'t move, only your spine flexes','Round your back to bring elbows toward your knees','Hold the contraction at the bottom and feel the abs'],
+  'Russian Twist': ['Feet can be on the floor (easier) or elevated (harder)','Rotate your torso, not just your arms','Touch the weight to the floor beside each hip','Slow and controlled — speed makes this less effective'],
+  'Hanging Leg Raise': ['Dead hang, no swinging','Raise legs to 90 degrees or higher if you can','Control the descent — don\'t let legs swing down','Posterior pelvic tilt at the top (tuck the pelvis) for full ab contraction'],
+};
+
+const _formCueCache = {}; // runtime cache for AI-generated cues
+
+async function getFormCuesAsync(exerciseName) {
+  // Check preset cues first
+  const preset = getFormCues(exerciseName);
+  if (preset) return preset;
+
+  // Check runtime cache
+  if (_formCueCache[exerciseName]) return _formCueCache[exerciseName];
+
+  // Check library cache (stored on exercise record)
+  const libEx = _exLibrary.find(e=>e.name.toLowerCase()===exerciseName.toLowerCase());
+  if (libEx?.form_cues?.length) {
+    _formCueCache[exerciseName] = libEx.form_cues;
+    return libEx.form_cues;
+  }
+
+  // Generate via AI Worker
+  try {
+    const raw = await callAI('form_cues', { exerciseName });
+    const cues = JSON.parse(raw);
+    if (Array.isArray(cues) && cues.length) {
+      _formCueCache[exerciseName] = cues;
+      // Save to library for next time
+      if (libEx?.id) {
+        db('exercises','PATCH',{form_cues:cues},`?id=eq.${libEx.id}`).catch(()=>{});
+      }
+      return cues;
+    }
+  } catch(e) { /* non-critical */ }
+  return null;
+}
+
+async function loadWMCues(detailsEl, exerciseName) {
+  // Already loaded
+  if (detailsEl.dataset.loaded) return;
+  detailsEl.dataset.loaded = '1';
+  const bodyEl = detailsEl.querySelector('[id$="-body"], div:last-child');
+  try {
+    const cues = await getFormCuesAsync(exerciseName);
+    if (cues && bodyEl) {
+      bodyEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:5px">
+        ${cues.map(c=>`<div style="font-size:12.5px;color:var(--text-secondary);padding:6px 10px;background:var(--surface2);border-radius:5px;border-left:3px solid var(--orange)">• ${c}</div>`).join('')}
+      </div>`;
+    } else if (bodyEl) {
+      bodyEl.textContent = 'No cues available for this exercise yet.';
+    }
+  } catch(e) {
+    if (bodyEl) bodyEl.textContent = 'Could not load cues.';
+  }
+}
+
+// Also add form_cues column to library SQL
+// (handled in next schema update)
 
 // REST TIMER
 // ═══════════════════════════════════════════════════
