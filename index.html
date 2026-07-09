@@ -1237,9 +1237,9 @@ function getPlannedWorkouts(ds) {
   if (_activeProgStartDate && prog.weeks) {
     const startMs = new Date(_activeProgStartDate+'T00:00:00').getTime();
     const msPerDay = 24 * 60 * 60 * 1000;
-    // Last valid day = start + (weeks*7 - 1) days; end = start + weeks*7 days
     const endMs = startMs + (prog.weeks * 7 * msPerDay);
     const dsMs = new Date(ds+'T00:00:00').getTime();
+    if (ds === '2026-07-07') console.log(`Jul 7 check: start=${_activeProgStartDate}, startMs=${startMs}, dsMs=${dsMs}, blocked=${dsMs < startMs}`);
     if (dsMs < startMs || dsMs >= endMs) {
       // Only show if a workout was explicitly moved to this date
       Object.entries(overrides).forEach(([origDate,ov])=>{
@@ -2469,7 +2469,9 @@ async function confirmActivateProgram(id){
     // Re-read from DB to confirm start_date was saved, then set local state
     const saved = await db('program_assignments','GET',null,
       `?user_id=eq.${currentUser.id}&program_id=eq.${id}&active=eq.true&select=start_date`);
+    console.log('Saved assignment:', saved, 'Expected start_date:', startDate);
     _activeProgStartDate = saved?.[0]?.start_date || startDate;
+    console.log('_activeProgStartDate set to:', _activeProgStartDate);
     renderPrograms();
     await renderCalendar();
     toast(`Program activated from ${_activeProgStartDate} ✓`);
