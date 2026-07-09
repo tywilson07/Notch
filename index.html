@@ -2484,27 +2484,30 @@ function assignProgramToUser(userId, progId, userName){
     confirmAssignProgram(userId, '', null);
     return;
   }
-  const prog = (_calPrograms||[]).find(p=>p.id===progId);
-  const progName = prog?.name || 'Program';
-  const displayName = userName || 'athlete';
-  document.getElementById('modal-title').textContent = `Assign ${progName}`;
-  document.getElementById('modal-body').innerHTML = `
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
-      Assigning <strong>${progName}</strong> to <strong>${displayName}</strong>.
-      ${prog?.weeks ? `This is a ${prog.weeks}-week program.` : ''}
-    </div>
-    <div class="field">
-      <label>Program Start Date</label>
-      <input id="assign-start-date" type="date" value="${todayStr()}"
-        style="font-size:16px;padding:10px;font-family:var(--font)">
-      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
-        Workouts will appear on ${displayName}'s calendar starting this date.
+  // Defer to let the select onchange event fully clear before opening modal
+  setTimeout(() => {
+    const prog = (_calPrograms||[]).find(p=>p.id===progId);
+    const progName = prog?.name || 'Program';
+    const displayName = userName || 'athlete';
+    document.getElementById('modal-title').textContent = `Assign ${progName}`;
+    document.getElementById('modal-body').innerHTML = `
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+        Assigning <strong>${progName}</strong> to <strong>${displayName}</strong>.
+        ${prog?.weeks ? `This is a <strong>${prog.weeks}-week</strong> program.` : ''}
       </div>
-    </div>`;
-  document.getElementById('modal-footer').innerHTML = `
-    <button class="btn btn-ghost" onclick="closeModal();renderPrograms()">Cancel</button>
-    <button class="btn btn-primary" onclick="confirmAssignProgram('${userId}','${progId}',document.getElementById('assign-start-date')?.value)">Assign</button>`;
-  showModal();
+      <div class="field">
+        <label>Program Start Date</label>
+        <input id="assign-start-date" type="date" value="${todayStr()}"
+          style="font-size:16px;padding:10px;font-family:var(--font)">
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
+          Workouts will appear on ${displayName}'s calendar starting this date.
+        </div>
+      </div>`;
+    document.getElementById('modal-footer').innerHTML = `
+      <button class="btn btn-ghost" onclick="closeModal();renderPrograms()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAssignProgram('${userId}','${progId}',document.getElementById('assign-start-date')?.value)">Assign</button>`;
+    showModal();
+  }, 50);
 }
 
 async function confirmAssignProgram(userId, progId, startDate){
