@@ -295,9 +295,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .empty-state p{font-size:13.5px;line-height:1.6;max-width:240px;margin:0 auto 16px}
 
 /* ── COLOR-CODED CALENDAR DOTS ── */
-.cal-dot-logged-full{background:var(--green-light);color:var(--green);cursor:grab;display:block}
-.cal-dot-logged-partial{background:var(--amber-light);color:var(--amber);cursor:grab;display:block}
-.cal-dot-logged-full:active,.cal-dot-logged-partial:active{cursor:grabbing;opacity:.5}
+/* cal-dot styles defined above */
 
 /* ── COACH DASHBOARD ── */
 .athlete-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px}
@@ -1220,8 +1218,6 @@ function buildCalGrid() {
   }
   grid.innerHTML = cells;
 }
-
-// (old simple getCellDots removed — full version used below)
 
 function getPlannedWorkouts(ds) {
   // Returns array — supports multiple planned workouts on same day
@@ -2917,10 +2913,6 @@ function toast(msg){
 }
 
 // ═══════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════
 // COACH DASHBOARD — ATHLETES VIEW
 // ═══════════════════════════════════════════════════
 let _viewingAthleteId = null;
@@ -3688,7 +3680,6 @@ function toggleWMNotes() {
   if (!isOpen) document.getElementById('wm-notes-input')?.focus();
 }
 
-// syncWMNotes — section-aware version defined above
 
 // ── PLATE CALCULATOR ──
 function openPlateCalc() {
@@ -3811,9 +3802,6 @@ async function loadWMCues(detailsEl, exerciseName) {
     if (bodyEl) bodyEl.textContent = 'Could not load cues.';
   }
 }
-
-// Also add form_cues column to library SQL
-// (handled in next schema update)
 
 // REST TIMER
 // ═══════════════════════════════════════════════════
@@ -4190,14 +4178,12 @@ function renderHelp() {
       <div class="help-card">
         <div class="help-card-title">↕ Moving workouts to different days</div>
         <div class="help-card-body">
-          Both planned (not yet logged) and completed workouts can be moved to different days.
+          Both planned (orange, not yet logged) and completed (green/amber) workouts can be moved to different days.
           <br><br>
-          <strong>Moving a planned workout (before logging):</strong> Tap the day on the calendar, then tap <strong>↕ Move</strong> on the planned workout card. A date picker appears — tap the new date. The workout stays on your program schedule but shows on the new day instead. If you change your mind, tap Move again and hit <strong>Undo Move</strong> to return it to its original day.
+          <strong>Moving a planned workout:</strong> Tap the day, then tap <strong>↕ Move</strong> on the planned workout card. Pick a new date. If you change your mind, tap Move again and hit <strong>Undo Move</strong>. You can also <strong>drag the orange dot</strong> on the calendar to a new day on desktop.
           <br><br>
-          <strong>Moving a completed workout (already logged):</strong> Tap the day, then tap <strong>↕ Move</strong> on the workout entry in the day panel. Pick the new date. All sets, notes, feedback, and coach notes travel with it.
-          <br><br>
-          <strong>Drag and drop (desktop):</strong> Tap and hold a dot on the calendar grid and drag it to a different day. Works best on desktop.
-          <div class="help-tip"><span>💡</span><div>Great for planning around appointments or events — move Wednesday's workout to Tuesday before the week starts and your calendar stays accurate.</div></div>
+          <strong>Moving a completed workout:</strong> Tap the day, then tap <strong>↕ Move</strong> on the workout entry. Pick the new date. All sets, notes, feedback, and coach notes travel with it. You can also drag the green/amber dot on desktop.
+          <div class="help-tip"><span>💡</span><div>Move planned workouts before the week starts to plan around appointments — drag or tap Move and your calendar stays accurate.</div></div>
         </div>
       </div>
       <div class="help-card">
@@ -4327,7 +4313,7 @@ function renderHelp() {
             <li><strong>Warm-Up & Cool Down</strong> — one large circle button marks the whole section done at once</li>
             <li><strong>Main Workout</strong> — large inputs with <strong>ghost progression numbers</strong> showing your suggested next weight and reps based on last session</li>
             <li><strong>Rest timer</strong> — starts automatically after every checked set, turns red under 10 seconds</li>
-            <li><strong>📝 Notes button</strong> (footer) — tap to toggle a notes panel showing your previous session notes and a field to write new ones</li>
+            <li><strong>📝 Notes panel</strong> — open by default below the exercise. Shows your previous session notes as a reminder and has a field to write new ones. Tap 📝 in the footer to hide it if you want a cleaner view.</li>
             <li><strong>🔢 Plate Calculator</strong> (footer) — enter a target weight, pick your bar, and see exactly which plates to load per side</li>
             <li><strong>Prev / Next buttons</strong> — alternative to swiping</li>
             <li><strong>"🏆 Finish & Save"</strong> replaces Next on the last exercise</li>
@@ -4380,6 +4366,19 @@ function renderHelp() {
           <div class="help-tip"><span>💡</span><div>Each day in the program builder has a <strong>📁 Load from Template</strong> button. Tap it to pre-fill all exercises from a saved template. You can still edit anything after loading.</div></div>
         </div>
       </div>
+      <div class="help-card">
+        <div class="help-card-title">💪 Weight, Bodyweight, and Assisted</div>
+        <div class="help-card-body">
+          When building a program, each main workout exercise has three small toggle buttons below it: <strong>Weight</strong>, <strong>BW</strong>, and <strong>Assisted</strong>.
+          <ul>
+            <li><strong>Weight</strong> (default) — standard barbell/dumbbell exercise. Athletes enter the weight they used.</li>
+            <li><strong>BW</strong> — bodyweight exercise like pull-ups or push-ups. The weight field shows <strong>BW+</strong> so athletes can optionally add extra load (weighted vest, dip belt). Leave blank for pure bodyweight.</li>
+            <li><strong>Assisted</strong> — machine-assisted exercises like Assisted Dips or Assisted Pull-Ups. The weight entered is the assistance amount, shown as <strong>-60lb</strong> so it's clear it's a reduction not an addition.</li>
+          </ul>
+          These settings carry through automatically when an athlete opens the log modal for that workout — Assisted Dips pre-loads with the Assisted toggle already active.
+        </div>
+      </div>
+
       <div class="help-card">
         <div class="help-card-title">📝 Coach notes per workout day</div>
         <div class="help-card-body">
@@ -4590,7 +4589,7 @@ function renderHelp() {
         <div class="help-card-body">
           <div style="display:flex;flex-direction:column;gap:0">
             <div class="help-step"><div class="help-step-num">1</div><div class="help-step-text"><strong>Goal</strong> — Strength, Cardio, Mobility, or Full Body</div></div>
-            <div class="help-step"><div class="help-step-num">2</div><div class="help-step-text"><strong>Muscle group(s)</strong> — tap to select up to 3 muscle groups. They toggle on and off — tap Chest then tap Back to get a Back + Chest workout. The selection shows below the step title as you build it.</div></div>
+            <div class="help-step"><div class="help-step-num">2</div><div class="help-step-text"><strong>Muscle group(s)</strong> — tap to select up to 3 muscle groups. They toggle on and off — tap Chest, then Back to get a Chest + Back workout. Your selection is shown below the step title. The more groups you pick, the more the exercises are distributed evenly across them.</div></div>
             <div class="help-step"><div class="help-step-num">3</div><div class="help-step-text"><strong>Equipment</strong> — Full Gym, Dumbbells Only, Bodyweight Only, or Bands. The workout only includes exercises matching your equipment.</div></div>
             <div class="help-step"><div class="help-step-num">4</div><div class="help-step-text"><strong>Time</strong> — 20, 30, 45, or 60 minutes. Exercise count and sets are scaled to fit.</div></div>
           </div>
