@@ -2353,6 +2353,8 @@ async function renderPrograms(){
       db('programs','GET',null,'?select=*'),
       db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=*`)
     ]);
+    // Cache globally so activateProgram can look up weeks/name
+    if (progs) _calPrograms = progs;
     const activeAssign=(assigns||[]).find(a=>a.active);
     const activeProgId=activeAssign?.program_id;
 
@@ -2430,26 +2432,24 @@ async function renderPrograms(){
   }catch(e){console.error('Programs error',e);toast('Could not load programs');}
 }
 
-async function activateProgram(id){
-  // Show a proper date picker modal instead of prompt()
+function activateProgram(id){
   const prog = (_calPrograms||[]).find(p=>p.id===id);
   const progName = prog?.name || 'Program';
-  return new Promise(resolve => {
-    document.getElementById('modal-title').textContent = `Activate ${progName}`;
-    document.getElementById('modal-body').innerHTML = `
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
-        When does this program start? The calendar will show workouts for ${prog?.weeks||'?'} weeks from this date.
-      </div>
-      <div class="field">
-        <label>Start Date</label>
-        <input id="prog-start-date" type="date" value="${todayStr()}"
-          style="font-size:16px;padding:10px;font-family:var(--font)">
-      </div>`;
-    document.getElementById('modal-footer').innerHTML = `
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="confirmActivateProgram('${id}')">Activate</button>`;
-    showModal();
-  });
+  const weeks = prog?.weeks;
+  document.getElementById('modal-title').textContent = `Activate ${progName}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      When does this program start? The calendar will show workouts for ${weeks ? `<strong>${weeks} weeks</strong>` : 'the full program duration'} from this date.
+    </div>
+    <div class="field">
+      <label>Start Date</label>
+      <input id="prog-start-date" type="date" value="${todayStr()}"
+        style="font-size:16px;padding:10px;font-family:var(--font)">
+    </div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="confirmActivateProgram('${id}')">Activate</button>`;
+  showModal();
 }
 
 async function confirmActivateProgram(id){
