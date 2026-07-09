@@ -1577,12 +1577,17 @@ async function openLogModal(ds, suggestedName) {
       if (isSimple) return {name,type:'simple',section:sectionLabel,done:false,expanded:false};
       const targetSets = typeof exData === 'object' && exData.sets ? parseInt(exData.sets)||3 : 3;
       const targetReps = typeof exData === 'object' ? (exData.reps||'') : '';
-      // For ranges like "8-12" pre-fill with lower bound; for "AMRAP" or text leave blank
       const repsLower = targetReps.includes('-') ? targetReps.split('-')[0].trim()
         : /^\d+$/.test(targetReps.trim()) ? targetReps.trim() : '';
-      return {name,type:'strength',section:sectionLabel,setType:isBW?'bodyweight':'weight',
+      // Respect setType from program builder; fall back to name-based detection
+      const progSetType = typeof exData === 'object' ? (exData.setType||null) : null;
+      const detectedBW = /pull.up|push.up|dip|chin|handstand|muscle.up/i.test(name);
+      const setType = progSetType || (detectedBW ? 'bodyweight' : 'weight');
+      const isAssisted = setType === 'assisted';
+      const isBW2 = setType === 'bodyweight';
+      return {name,type:'strength',section:sectionLabel,setType,
         targetSets, targetReps,
-        sets:Array.from({length:targetSets},()=>({w:'',r:repsLower,bw:isBW,done:false})),
+        sets:Array.from({length:targetSets},()=>({w:'',r:repsLower,bw:isBW2,assisted:isAssisted,done:false})),
         expanded:false};
     };
     _logExercises = [
@@ -2297,7 +2302,14 @@ async function renderPrograms(){
 
     // Program grid
     const grid=document.getElementById('prog-grid');
-    grid.innerHTML=(progs||[]).map(p=>{
+    // Deduplicate by name — keep the first occurrence of each name
+    const seenNames = new Set();
+    const uniqueProgs = (progs||[]).filter(p => {
+      if (seenNames.has(p.name)) return false;
+      seenNames.add(p.name);
+      return true;
+    });
+    grid.innerHTML=uniqueProgs.map(p=>{
       const isActive=p.id===activeProgId;
       const tagClass=p.tag==='Powerlifting'?'pill-purple':p.tag==='Cardio'?'pill-green':p.tag==='Custom'?'pill-amber':'pill-blue';
       return `<div class="prog-card ${isActive?'active-prog':''}" onclick="activateProgram('${p.id}')">
@@ -2404,15 +2416,28 @@ function buildProgramModal(prog){
       const name = typeof ex === 'string' ? ex : (ex.name||'');
       const sets = typeof ex === 'string' ? '' : (ex.sets||'');
       const reps = typeof ex === 'string' ? '' : (ex.reps||'');
-      return `<div class="cp-ex-row" id="cpex-${dayIdx}-${section}-${ei}">
-        <input class="cp-ex-name" placeholder="Exercise name" value="${name}"
-          oninput="cpExField(${dayIdx},'${section}',${ei},'name',this.value)">
-        <input class="cp-ex-sets" type="number" placeholder="Sets" value="${sets}" min="1" max="20"
-          oninput="cpExField(${dayIdx},'${section}',${ei},'sets',this.value)" title="Sets">
-        <span style="color:var(--text-muted);font-size:13px;flex-shrink:0">×</span>
-        <input class="cp-ex-reps" type="text" placeholder="Reps" value="${reps}"
-          oninput="cpExField(${dayIdx},'${section}',${ei},'reps',this.value)" title="Reps or range (e.g. 8-12, AMRAP)">
-        <button onclick="cpRemoveEx(${dayIdx},'${section}',${ei})" class="cp-ex-remove" title="Remove">✕</button>
+      const setType = typeof ex === 'object' ? (ex.setType||'weight') : 'weight';
+      const typeBtn = (val, label, color) =>
+        `<button class="set-type-btn ${setType===val?'active':''}"
+          style="${setType===val?`background:${color};border-color:${color};color:#fff`:''};font-size:10px;padding:2px 6px"
+          onclick="cpExField(${dayIdx},'${section}',${ei},'setType','${val}');buildProgramModal()">${label}</button>`;
+      const typeSel = section==='exercises' ? `<div style="display:flex;gap:3px;margin-top:3px">
+        ${typeBtn('weight','Weight','var(--orange)')}
+        ${typeBtn('bodyweight','BW','var(--lime)')}
+        ${typeBtn('assisted','Assisted','var(--purple)')}
+      </div>` : '';
+      return `<div class="cp-ex-row" id="cpex-${dayIdx}-${section}-${ei}" style="flex-wrap:wrap">
+        <div style="display:flex;gap:4px;flex:1;min-width:0;align-items:center">
+          <input class="cp-ex-name" placeholder="Exercise name" value="${name}"
+            oninput="cpExField(${dayIdx},'${section}',${ei},'name',this.value)" style="flex:1;min-width:0">
+          <input class="cp-ex-sets" type="number" placeholder="Sets" value="${sets}" min="1" max="20"
+            oninput="cpExField(${dayIdx},'${section}',${ei},'sets',this.value)" title="Sets">
+          <span style="color:var(--text-muted);font-size:13px;flex-shrink:0">×</span>
+          <input class="cp-ex-reps" type="text" placeholder="Reps" value="${reps}"
+            oninput="cpExField(${dayIdx},'${section}',${ei},'reps',this.value)" title="Reps or range (e.g. 8-12, AMRAP)">
+          <button onclick="cpRemoveEx(${dayIdx},'${section}',${ei})" class="cp-ex-remove" title="Remove">✕</button>
+        </div>
+        ${typeSel}
       </div>`;
     }).join('');
   };
@@ -4503,6 +4528,19 @@ function showCompletionScreen({dayName, totalSets, totalVol, totalDist, newPRs, 
   document.getElementById('comp-emoji').textContent = msg.emoji;
   document.getElementById('comp-title').textContent = msg.title;
   document.getElementById('comp-sub').textContent = dayName;
+
+  // Pre-populate feedback from workout mode if already entered
+  if (_selectedFeedback) {
+    document.querySelectorAll('#comp-feedback .feedback-btn').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.rating === _selectedFeedback);
+    });
+  }
+  const wmNote = document.getElementById('wm-overall-notes')?.value?.trim()||
+                  document.getElementById('log-notes')?.value?.trim()||'';
+  const compNote = document.getElementById('comp-feedback-note');
+  if (compNote && wmNote && !compNote.value) {
+    compNote.value = wmNote;
+  }
 
   const stats = [];
   if (totalSets > 0) stats.push({val:totalSets, label:'Sets Done'});
