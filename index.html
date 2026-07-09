@@ -2466,8 +2466,13 @@ async function confirmActivateProgram(id){
     } else {
       await db('program_assignments','POST',{user_id:currentUser.id,program_id:id,active:true,start_date:startDate});
     }
-    _activeProgStartDate = startDate;
-    renderPrograms(); renderCalendar(); toast(`Program activated from ${startDate} ✓`);
+    // Re-read from DB to confirm start_date was saved, then set local state
+    const saved = await db('program_assignments','GET',null,
+      `?user_id=eq.${currentUser.id}&program_id=eq.${id}&active=eq.true&select=start_date`);
+    _activeProgStartDate = saved?.[0]?.start_date || startDate;
+    renderPrograms();
+    await renderCalendar();
+    toast(`Program activated from ${_activeProgStartDate} ✓`);
   }catch(e){toast('Could not activate');console.error(e);}
 }
 
