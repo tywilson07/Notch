@@ -5768,17 +5768,69 @@ async function saveExerciseEdit(existingId) {
   const exercise_type = document.getElementById('ex-edit-type')?.value||'strength';
   const payload = {name, muscle_group, equipment, alternatives, category: muscle_group, exercise_type};
   try {
+    let savedId = existingId;
     if (existingId) {
       await db('exercises','PATCH',payload,`?id=eq.${existingId}`);
-      toast('Exercise updated');
+      toast('Exercise updated ✓');
     } else {
-      await db('exercises','POST',{...payload, created_by:currentUser.id, is_preset:false});
-      toast('Exercise added');
+      const rows = await db('exercises','POST',{...payload, created_by:currentUser.id, is_preset:false},'?select=id');
+      savedId = rows?.[0]?.id;
+      toast('Exercise added — generating AI content...');
     }
-    _exLibrary = []; // clear cache so next load refreshes
+    _exLibrary = [];
     closeModal();
     renderExerciseLibrary();
+
+    // Auto-generate alternatives and form cues for new exercises (or existing with empty fields)
+    const needsAlts = !existingId || alternatives.length === 0;
+    const needsCues = !existingId;
+    if ((needsAlts || needsCues) && savedId && exercise_type === 'strength') {
+      generateExerciseAIContent(savedId, name, muscle_group, equipment, needsAlts, needsCues);
+    }
   } catch(e) { toast('Save failed'); console.error(e); }
+}
+
+async function generateExerciseAIContent(exId, name, muscleGroup, equipment, doAlts, doCues) {
+  try {
+    const updates = {};
+
+    if (doAlts) {
+      try {
+        const libNames = _exLibrary.length
+          ? _exLibrary.filter(e=>e.muscle_group===muscleGroup).map(e=>e.name)
+          : [];
+        const raw = await callAI('swap_alternatives', {
+          exerciseName: name,
+          muscleGroup,
+          equipment,
+          libraryExercises: libNames
+        });
+        const alts = JSON.parse(raw);
+        if (Array.isArray(alts) && alts.length) {
+          updates.alternatives = alts.slice(0, 5);
+        }
+      } catch(e) { console.warn('AI alternatives failed:', e); }
+    }
+
+    if (doCues) {
+      try {
+        const raw = await callAI('form_cues', { exerciseName: name });
+        const cues = JSON.parse(raw);
+        if (Array.isArray(cues) && cues.length) {
+          updates.form_cues = cues;
+        }
+      } catch(e) { console.warn('AI form cues failed:', e); }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await db('exercises','PATCH',updates,`?id=eq.${exId}`);
+      _exLibrary = []; // clear cache so library shows updated data
+      // If still on library view, refresh it
+      const libBody = document.getElementById('library-body');
+      if (libBody) renderExerciseLibrary();
+      toast(`AI content ready for ${name} ✓`);
+    }
+  } catch(e) { console.warn('generateExerciseAIContent error:', e); }
 }
 
 async function deleteExercise(id) {
