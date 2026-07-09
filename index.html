@@ -820,7 +820,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
     <button class="btn btn-white" id="wm-prev-btn" onclick="wmNavigate(-1)" style="flex:1">‹ Prev</button>
     <button class="btn btn-ghost btn-sm" onclick="toggleWMNotes()" title="Notes" style="padding:0 10px">📝</button>
     <button class="btn btn-ghost btn-sm" onclick="openPlateCalc()" title="Plate calculator" style="padding:0 10px">🔢</button>
-    <button class="btn btn-primary" id="wm-next-btn" onclick="wmNavigate(1)" style="flex:2">Next ›</button>
+    <button class="btn btn-primary" id="wm-next-btn" onclick="wmNextAction()" style="flex:2">Next ›</button>
   </div>
 </div>
 
@@ -1088,6 +1088,7 @@ let _calWorkouts = {};   // local cache {date: [workout,...]}
 let _calAssigned = {};   // assigned workouts from coach {date: [assignment,...]}
 let _calPrograms = [];   // programs visible to this user
 let _activeProgId = null;
+let _calOverrides = {};  // planned workout overrides {newDate: {originalDate, workoutName, programId}}
 
 function todayStr() {
   const d = new Date();
@@ -1102,11 +1103,12 @@ async function renderCalendar() {
   try {
     const startDate = dateStr(currentYear, currentMonth, 1);
     const endDate   = dateStr(currentYear, currentMonth, new Date(currentYear, currentMonth+1, 0).getDate());
-    const [wkts, progs, assigns, assigned] = await Promise.all([
+    const [wkts, progs, assigns, assigned, overrides] = await Promise.all([
       db('workouts','GET',null,`?user_id=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=*`),
       db('programs','GET',null,`?select=*`),
       db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=*`),
-      db('workout_assignments','GET',null,`?assigned_to=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=*`)
+      db('workout_assignments','GET',null,`?assigned_to=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=*`),
+      db('workout_schedule_overrides','GET',null,`?user_id=eq.${currentUser.id}&select=*`).catch(()=>[])
     ]);
     _calWorkouts = {};
     (wkts||[]).forEach(w => {
@@ -1121,6 +1123,11 @@ async function renderCalendar() {
     _calPrograms = progs || [];
     const activeAssign = (assigns||[]).find(a=>a.active);
     _activeProgId = activeAssign ? activeAssign.program_id : null;
+    // Build overrides map: originalDate → newDate
+    _calOverrides = {};
+    (overrides||[]).forEach(o => {
+      _calOverrides[o.original_date] = {newDate:o.new_date, workoutName:o.workout_name, id:o.id};
+    });
   } catch(e) { console.error('Calendar load error', e); }
   buildCalGrid();
   buildWeekStrip();
@@ -1205,8 +1212,23 @@ function getPlannedWorkout(ds) {
   if (!_activeProgId) return null;
   const prog = _calPrograms.find(p=>p.id===_activeProgId);
   if (!prog) return null;
+
+  // Check if this date was moved away (has an override pointing elsewhere)
+  const movedAway = Object.entries(_calOverrides||{}).find(([orig, ov]) => orig === ds);
+  if (movedAway) return null; // this date's workout was moved to another day
+
+  // Check if a workout was moved TO this date from another date
+  const movedHere = Object.entries(_calOverrides||{}).find(([orig, ov]) => ov.newDate === ds);
+  if (movedHere) {
+    const [origDate, ov] = movedHere;
+    const origDow = new Date(origDate+'T12:00:00').getDay();
+    const planned = (prog.schedule||[]).find(s=>s.dow===origDow)||null;
+    if (planned) return {...planned, movedFrom:origDate, overrideId:ov.id};
+  }
+
+  // Normal: check if this day of week has a scheduled workout
   const dow = new Date(ds+'T12:00:00').getDay();
-  return (prog.schedule||[]).find(s=>s.dow===dow)||null;
+  return (prog.schedule||[]).find(s=>parseInt(s.dow)===dow)||null;
 }
 
 function shiftMonth(delta) {
@@ -1335,18 +1357,19 @@ async function renderDayPanel(ds) {
         <div style="font-size:12.5px;color:var(--gray-700);line-height:1.7">${items.map(fmtEx).join('')}</div>
       </div>` : '';
 
-    bodyHtml+=`<div class="workout-entry" style="border-color:var(--blue-mid);background:var(--blue-light);padding:0;overflow:hidden">
-      <div style="padding:10px 12px 8px;border-bottom:1px solid var(--blue-mid)">
-        <div class="workout-entry-name" style="color:var(--blue)">${planned.name}</div>
+    bodyHtml+=`<div class="workout-entry" style="border-color:var(--orange);background:var(--orange-dim);padding:0;overflow:hidden">
+      <div style="padding:10px 12px 8px;border-bottom:1px solid var(--orange-mid);display:flex;align-items:center;justify-content:space-between">
+        <div class="workout-entry-name" style="color:var(--orange)">${planned.name}${planned.movedFrom?` <span style="font-size:10px;font-weight:600;color:var(--text-muted)">(moved)</span>`:''}</div>
+        <button class="btn btn-xs btn-ghost" onclick="openMovePlannedWorkout('${ds}','${planned.name}','${planned.overrideId||''}')">↕ Move</button>
       </div>
       <div style="padding:10px 12px">
-        ${sectionHtml('Warm-Up','🔥','#D97706','#FFFBEB','#FDE68A',warmup)}
-        ${sectionHtml('Main Workout','💪','#2563EB','#EFF6FF','#BFDBFE',mainExs)}
-        ${sectionHtml('Cool Down','🧘','#16A34A','#F0FDF4','#BBF7D0',cooldown)}
-        ${!warmup.length&&!mainExs.length&&!cooldown.length?`<div style="font-size:12.5px;color:var(--gray-600)">No exercises added yet</div>`:''}
+        ${sectionHtml('Warm-Up','🔥','#D97706','rgba(251,191,36,.08)','rgba(251,191,36,.2)',warmup)}
+        ${sectionHtml('Main Workout','💪','var(--orange)','rgba(255,92,0,.08)','rgba(255,92,0,.2)',mainExs)}
+        ${sectionHtml('Cool Down','🧘','var(--lime)','rgba(170,255,0,.08)','rgba(170,255,0,.2)',cooldown)}
+        ${!warmup.length&&!mainExs.length&&!cooldown.length?`<div style="font-size:12.5px;color:var(--text-muted)">No exercises added yet</div>`:''}
         ${coachNotes?`<div style="background:var(--purple-light);border:1px solid #C4B5FD;border-radius:6px;padding:8px 10px;margin-top:6px">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);margin-bottom:3px">📝 Coach Notes</div>
-          <div style="font-size:12.5px;color:var(--gray-700)">${coachNotes}</div>
+          <div style="font-size:12.5px;color:var(--text-secondary)">${coachNotes}</div>
         </div>`:''}
       </div>
       <div style="padding:0 12px 12px">
@@ -2015,6 +2038,84 @@ async function saveLog(){
       showCompletionScreen({dayName, totalSets, totalVol, totalDist, newPRs, notes});
     }
   } catch(e){toast('Save failed — try again');console.error(e);}
+}
+
+async function openMovePlannedWorkout(fromDate, workoutName, existingOverrideId) {
+  const buildPickerMonth = (year, month) => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthLabel = new Date(year, month, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const today = todayStr();
+    let html = `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;margin-top:12px">${monthLabel}</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+      ${['S','M','T','W','T','F','S'].map(d=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--text-muted);padding:2px">${d}</div>`).join('')}
+    </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
+    for(let i=0;i<firstDay;i++) html+=`<div></div>`;
+    for(let day=1;day<=daysInMonth;day++){
+      const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const isFrom=ds===fromDate, isToday=ds===today;
+      html+=`<button onclick="confirmMovePlannedWorkout('${fromDate}','${ds}','${workoutName}','${existingOverrideId}')"
+        style="padding:6px 2px;border-radius:5px;border:1.5px solid ${isFrom?'var(--orange)':'var(--border)'};
+          background:${isFrom?'var(--orange-dim)':'var(--surface2)'};
+          color:${isFrom?'var(--orange)':isToday?'var(--lime)':'var(--text-primary)'};
+          font-size:13px;font-weight:${isToday||isFrom?'800':'500'};
+          cursor:${isFrom?'default':'pointer'};font-family:var(--mono);
+          ${isFrom?'pointer-events:none':''}">
+        ${day}</button>`;
+    }
+    html+=`</div>`;
+    return html;
+  };
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const nextM=m+1>11?0:m+1, nextY=m+1>11?y+1:y;
+  document.getElementById('modal-title').textContent=`↕ Move ${workoutName}`;
+  document.getElementById('modal-body').innerHTML=`
+    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:4px">
+      Move this planned workout to a different day. It hasn't been logged yet — you're just rescheduling it.
+    </div>
+    <div style="font-size:11.5px;color:var(--orange);margin-bottom:12px;font-weight:600">
+      Currently scheduled: ${new Date(fromDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}
+    </div>
+    ${buildPickerMonth(y,m)}
+    ${buildPickerMonth(nextY,nextM)}`;
+  document.getElementById('modal-footer').innerHTML=`
+    ${existingOverrideId?`<button class="btn btn-danger btn-sm" onclick="cancelPlannedMove('${existingOverrideId}','${fromDate}')">Undo Move</button>`:''}
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>`;
+  showModal();
+}
+
+async function confirmMovePlannedWorkout(fromDate, toDate, workoutName, existingOverrideId) {
+  if(fromDate===toDate){closeModal();return;}
+  try{
+    if(existingOverrideId){
+      // Update existing override
+      await db('workout_schedule_overrides','PATCH',{new_date:toDate},`?id=eq.${existingOverrideId}`);
+    } else {
+      // Create new override
+      await db('workout_schedule_overrides','POST',{
+        user_id:currentUser.id,
+        original_date:fromDate,
+        new_date:toDate,
+        workout_name:workoutName,
+        program_id:_activeProgId
+      });
+    }
+    closeModal();
+    selectedDate=toDate;
+    await renderCalendar();
+    toast(`${workoutName} moved to ${new Date(toDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ✓`);
+  }catch(e){toast('Move failed — try again');console.error(e);}
+}
+
+async function cancelPlannedMove(overrideId, originalDate) {
+  if(!confirm('Undo this move and return the workout to its original day?')) return;
+  try{
+    await db('workout_schedule_overrides','DELETE',null,`?id=eq.${overrideId}`);
+    closeModal();
+    selectedDate=originalDate;
+    await renderCalendar();
+    toast('Workout returned to original day');
+  }catch(e){toast('Failed — try again');}
 }
 
 async function openMoveWorkout(workoutId, fromDate) {
@@ -3066,8 +3167,19 @@ function exitWorkoutMode() {
   showModal();
 }
 
-// Store WM nav items count globally so wmNavigate can use it
-let _wmNavCount = 0;
+let _wmIsLastScreen = false;
+
+function wmNextAction() {
+  if (_wmIsLastScreen) {
+    // Sync overall notes before saving
+    const on = document.getElementById('wm-overall-notes');
+    if (on) { const logN = document.getElementById('log-notes'); if (logN) logN.value = on.value; }
+    exitWorkoutMode();
+    setTimeout(saveLog, 300);
+  } else {
+    wmNavigate(1);
+  }
+}
 
 function renderWorkoutMode() {
   const exs=_logExercises;
@@ -3173,20 +3285,9 @@ function renderWorkoutMode() {
 
   document.getElementById('wm-prev-btn').style.opacity=_wmCurrentIdx===0?'0.3':'1';
   const isLast=_wmCurrentIdx===navItems.length-1;
+  _wmIsLastScreen = isLast;
   const nb=document.getElementById('wm-next-btn');
-  if(isLast){
-    nb.textContent='💾 Save Workout';
-    nb.onclick=()=>{
-      // Sync overall notes before saving
-      const on=document.getElementById('wm-overall-notes');
-      if(on){const logN=document.getElementById('log-notes');if(logN)logN.value=on.value;}
-      exitWorkoutMode();
-      setTimeout(saveLog,300);
-    };
-  } else {
-    nb.textContent='Next ›';
-    nb.onclick=()=>wmNavigate(1);
-  }
+  if(nb) nb.textContent = isLast ? '💾 Save Workout' : 'Next ›';
 }
 
 function wmSelectFeedback(rating) {
@@ -3921,12 +4022,14 @@ function renderHelp() {
       <div class="help-card">
         <div class="help-card-title">↕ Moving workouts to different days</div>
         <div class="help-card-body">
-          There are two ways to move a logged workout to a different day:
+          Both planned (not yet logged) and completed workouts can be moved to different days.
           <br><br>
-          <strong>↕ Move button (recommended on mobile):</strong> Tap any day with a logged workout, then tap the <strong>↕ Move</strong> button on the workout entry in the day panel. A date picker appears showing this month and next — tap the new date. The current date is highlighted in orange.
+          <strong>Moving a planned workout (before logging):</strong> Tap the day on the calendar, then tap <strong>↕ Move</strong> on the planned workout card. A date picker appears — tap the new date. The workout stays on your program schedule but shows on the new day instead. If you change your mind, tap Move again and hit <strong>Undo Move</strong> to return it to its original day.
           <br><br>
-          <strong>Drag and drop (best on desktop):</strong> Tap and hold a lime or amber dot on the calendar grid and drag it to a different day.
-          <div class="help-tip"><span>💡</span><div>Only logged workouts can be moved — orange planned dots are just the program schedule. All notes, sets, feedback, and coach notes travel with the workout.</div></div>
+          <strong>Moving a completed workout (already logged):</strong> Tap the day, then tap <strong>↕ Move</strong> on the workout entry in the day panel. Pick the new date. All sets, notes, feedback, and coach notes travel with it.
+          <br><br>
+          <strong>Drag and drop (desktop):</strong> Tap and hold a dot on the calendar grid and drag it to a different day. Works best on desktop.
+          <div class="help-tip"><span>💡</span><div>Great for planning around appointments or events — move Wednesday's workout to Tuesday before the week starts and your calendar stays accurate.</div></div>
         </div>
       </div>
       <div class="help-card">
