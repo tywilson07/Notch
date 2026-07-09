@@ -5645,7 +5645,7 @@ let _librarySearch = '';
 
 function renderLibraryList() {
   const body = document.getElementById('library-body');
-  const groups = ['All','Chest','Back','Legs','Shoulders','Arms','Core','Cardio','Warmup','Cooldown'];
+  const groups = ['All','Chest','Back','Legs','Shoulders','Biceps','Triceps','Core','Cardio','Warmup','Cooldown'];
 
   // Apply muscle group filter
   let filtered = _libraryFilter==='All'
@@ -5726,7 +5726,7 @@ async function openEditExercise(id) {
 }
 
 function buildExerciseModal(ex) {
-  const groups = ['Chest','Back','Legs','Shoulders','Arms','Core','Cardio','Warmup','Cooldown','Custom'];
+  const groups = ['Chest','Back','Legs','Shoulders','Biceps','Triceps','Core','Cardio','Warmup','Cooldown','Custom'];
   const equipment = ['Any','Barbell','Dumbbell','Bodyweight','Cable','Machine','Cardio','Band'];
   const groupOpts = groups.map(g=>`<option ${ex?.muscle_group===g?'selected':''}>${g}</option>`).join('');
   const eqOpts = equipment.map(e=>`<option ${ex?.equipment===e?'selected':''}>${e}</option>`).join('');
@@ -5993,7 +5993,7 @@ function builderSetGoal(val, btn) {
     ? ['Running','Rowing','Cycling','Mixed Cardio']
     : val==='Mobility'
       ? ['Full Body','Hips & Lower Back','Shoulders & Chest','Legs & Hamstrings']
-      : ['Chest','Back','Legs','Shoulders','Arms','Core'];
+      : ['Chest','Back','Legs','Shoulders','Biceps','Triceps','Core'];
   document.getElementById('builder-focus-options').innerHTML = choices.map(f=>`
     <button class="builder-option" id="focus-btn-${f.replace(/[^a-z]/gi,'')}"
       onclick="builderToggleFocus('${f}',this)">
@@ -6102,7 +6102,8 @@ function generateWorkoutLocal() {
     'Back':      [['Pull-Ups','Chin-Ups','Lat Pulldown','Assisted Pull-Ups'],['Barbell Row','Dumbbell Row','Seated Cable Row','T-Bar Row'],['Face Pull']],
     'Legs':      [['Back Squat','Front Squat','Leg Press','Bulgarian Split Squat','Walking Lunges'],['Romanian Deadlift','Hip Thrust','Deadlift'],['Leg Curl'],['Calf Raises']],
     'Shoulders': [['Overhead Press','Dumbbell Shoulder Press'],['Lateral Raise','Cable Lateral Raise'],['Face Pull','Rear Delt Fly','Front Raise']],
-    'Arms':      [['Barbell Curl','Dumbbell Curl','Hammer Curl','Cable Curl'],['Tricep Pushdown','Skull Crushers','Overhead Tricep Extension','Dips','Assisted Dips']],
+    'Biceps':    [['Barbell Curl','Dumbbell Curl','Hammer Curl','Cable Curl']],
+    'Triceps':   [['Tricep Pushdown','Skull Crushers','Overhead Tricep Extension','Dips','Assisted Dips']],
     'Core':      [['Plank','Ab Wheel'],['Hanging Leg Raise','Cable Crunch'],['Russian Twist']],
   };
 
@@ -6110,7 +6111,7 @@ function generateWorkoutLocal() {
   const perGroup = Math.ceil(mainCount / focusArr.length);
   const setRep = {'Strength':mins<=30?{sets:'3',reps:'5'}:{sets:'4',reps:'5'},'Cardio':{sets:'1',reps:`${mins-10} min`},'Mobility':{sets:'1',reps:'60 sec each side'},'Full Body':{sets:'3',reps:'8-12'}};
   const defaultSetRep = setRep[goal]||{sets:'3',reps:'8-12'};
-  const muscleNotes = {'Chest':'Targets chest and triceps','Back':'Targets lats and upper back','Legs':'Targets quads, hamstrings, and glutes','Shoulders':'Targets deltoids','Arms':'Targets biceps and triceps','Core':'Targets abs and obliques','Cardio':'Cardiovascular conditioning'};
+  const muscleNotes = {'Chest':'Targets chest and triceps','Back':'Targets lats and upper back','Legs':'Targets quads, hamstrings, and glutes','Shoulders':'Targets deltoids','Biceps':'Targets biceps','Triceps':'Targets triceps','Core':'Targets abs and obliques','Cardio':'Cardiovascular conditioning'};
 
   let mainExs = [];
   for (const group of focusArr) {
