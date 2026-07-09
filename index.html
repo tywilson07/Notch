@@ -3066,13 +3066,15 @@ function exitWorkoutMode() {
   showModal();
 }
 
+// Store WM nav items count globally so wmNavigate can use it
+let _wmNavCount = 0;
+
 function renderWorkoutMode() {
   const exs=_logExercises;
   const mainExs=exs.filter(e=>e.section==='main'||!e.section);
   const warmupExs=exs.filter(e=>e.section==='warmup');
   const cooldownExs=exs.filter(e=>e.section==='cooldown');
 
-  // Count: warmup=1 item, each main ex=1 item, cooldown=1 item
   const warmupDone=warmupExs.length>0&&warmupExs.every(e=>e.done);
   const cooldownDone=cooldownExs.length>0&&cooldownExs.every(e=>e.done);
   const mainDone=mainExs.filter(ex=>ex.type==='cardio'?ex.cardio?.done:(ex.sets||[]).length>0&&(ex.sets||[]).every(s=>s.done)).length;
@@ -3085,35 +3087,85 @@ function renderWorkoutMode() {
   document.getElementById('wm-ex-counter').textContent=`${doneItems}/${totalItems} done`;
   document.getElementById('wm-progress-fill').style.width=pct+'%';
 
-  // Build nav: [Warm-Up pill] [main ex pills...] [Cool Down pill]
-  // _wmCurrentIdx maps to: 0=warmup section, 1..n=main exs, n+1=cooldown section
+  // Build nav items: warmup | main exercises | cooldown | wrap-up
   const navItems=[];
-  if(warmupExs.length) navItems.push({label:'🔥 Warm-Up',section:'warmup',done:warmupDone,isSection:true});
-  mainExs.forEach(ex=>navItems.push({label:ex.name,ex,done:ex.type==='cardio'?ex.cardio?.done:(ex.sets||[]).length>0&&(ex.sets||[]).every(s=>s.done),isSection:false}));
-  if(cooldownExs.length) navItems.push({label:'🧘 Cool Down',section:'cooldown',done:cooldownDone,isSection:true});
+  if(warmupExs.length) navItems.push({label:'🔥 Warm-Up',section:'warmup',done:warmupDone,isSection:true,noteSection:'warmup'});
+  mainExs.forEach(ex=>navItems.push({
+    label:ex.name, ex,
+    done:ex.type==='cardio'?ex.cardio?.done:(ex.sets||[]).length>0&&(ex.sets||[]).every(s=>s.done),
+    isSection:false, noteSection:'main'
+  }));
+  if(cooldownExs.length) navItems.push({label:'🧘 Cool Down',section:'cooldown',done:cooldownDone,isSection:true,noteSection:'cooldown'});
+  // Always add wrap-up as last item
+  navItems.push({label:'🏆',isWrapUp:true,noteSection:'overall'});
 
+  _wmNavCount = navItems.length;
   if(_wmCurrentIdx>=navItems.length) _wmCurrentIdx=Math.max(0,navItems.length-1);
 
   document.getElementById('wm-ex-nav').innerHTML=navItems.map((item,i)=>`
-    <button class="wm-ex-pill ${i===_wmCurrentIdx?'active':''} ${item.done?'done':''}"
-      onclick="_wmCurrentIdx=${i};renderWorkoutMode()">${item.label}</button>`).join('');
+    <button class="wm-ex-pill ${i===_wmCurrentIdx?'active':''} ${item.done?'done':''} ${item.isWrapUp?'':''}
+      style="${item.isWrapUp?'min-width:36px;':''}font-size:${item.isWrapUp?'16px':'inherit'}"
+      onclick="_wmCurrentIdx=${i};renderWorkoutMode()">${item.isWrapUp?'🏆':item.label}</button>`).join('');
 
-  // Render body for current nav item
   const cur=navItems[_wmCurrentIdx];
   if(!cur) return;
-  if(cur.isSection){
+
+  // ── Render notes panel based on current section ──
+  const noteSection = cur.noteSection||'main';
+  const noteVal = noteSection==='overall'
+    ? (document.getElementById('log-notes')?.value||'')
+    : (_savedSectionNotes[noteSection]||'');
+  const prevNoteVal = noteSection==='overall'
+    ? (_prevNotes||'')
+    : (_prevSectionNotes?.[noteSection]||'');
+  const notePlaceholder = noteSection==='warmup'?'Warm-up notes...'
+    : noteSection==='cooldown'?'Cool-down notes...'
+    : noteSection==='overall'?'Overall workout notes...'
+    : 'Main workout notes...';
+  const notesPanel = document.getElementById('wm-notes-panel');
+  const hintEl = document.getElementById('wm-prev-notes-hint');
+  const notesInput = document.getElementById('wm-notes-input');
+  if (hintEl) hintEl.innerHTML = prevNoteVal
+    ? `<div class="notes-hint" style="margin-bottom:6px;font-size:12px"><span class="notes-hint-icon">📝</span><div><strong>Last time:</strong> ${prevNoteVal}</div></div>` : '';
+  if (notesInput) {
+    notesInput.value = noteVal;
+    notesInput.placeholder = notePlaceholder;
+    notesInput.dataset.section = noteSection;
+  }
+
+  // ── Render main body ──
+  if(cur.isWrapUp){
+    // Final screen: overall notes + feedback
+    const logNotes = document.getElementById('log-notes')?.value||'';
+    const selectedFb = _selectedFeedback;
+    const FB = [{r:'easy',icon:'😴',label:'Easy'},{r:'good',icon:'💪',label:'Good'},{r:'hard',icon:'🔥',label:'Hard'},{r:'too_much',icon:'💀',label:'Too Much'}];
+    document.getElementById('wm-body').innerHTML=`
+      <div style="text-align:center;margin-bottom:20px">
+        <div class="wm-ex-name" style="margin-bottom:4px">Wrap Up</div>
+        <div class="wm-ex-meta">How did the workout go?</div>
+      </div>
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:8px">How did it feel?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        ${FB.map(f=>`<button class="feedback-btn ${selectedFb===f.r?'selected':''}" data-rating="${f.r}"
+          onclick="wmSelectFeedback('${f.r}')">${f.icon} ${f.label}</button>`).join('')}
+      </div>
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:6px">Overall Notes</div>
+      <textarea id="wm-overall-notes" rows="3" placeholder="Any comments for your coach or future self..."
+        style="font-size:13px;resize:none;width:100%;margin-bottom:4px"
+        oninput="syncWMOverallNotes(this.value)">${logNotes}</textarea>`;
+  } else if(cur.isSection){
     const secExs=exs.filter(e=>e.section===cur.section);
     const secDone=secExs.every(e=>e.done);
     document.getElementById('wm-body').innerHTML=`
       <div class="wm-ex-name">${cur.label}</div>
-      <div class="wm-ex-meta" style="margin-bottom:28px">${secExs.length} exercise${secExs.length!==1?'s':''} · tap to complete</div>
-      <div style="font-size:13px;color:var(--text-secondary);line-height:2;margin-bottom:28px">${secExs.map(e=>e.name).join('<br>')}</div>
+      <div class="wm-ex-meta" style="margin-bottom:20px">${secExs.length} exercise${secExs.length!==1?'s':''} · tap to complete</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:2;margin-bottom:20px">${secExs.map(e=>e.name).join('<br>')}</div>
       <div style="display:flex;justify-content:center">
         <button onclick="wmToggleSection('${cur.section}')" style="width:110px;height:110px;border-radius:50%;border:3px solid ${secDone?'var(--lime)':'var(--border-strong)'};background:${secDone?'var(--lime-dim)':'none'};cursor:pointer;font-size:44px;color:${secDone?'var(--lime)':'var(--text-muted)'};transition:all .2s;display:flex;align-items:center;justify-content:center">
           ${secDone?'✓':'○'}
         </button>
       </div>
-      ${secDone?'<div style="text-align:center;margin-top:20px;font-size:14px;font-weight:800;color:var(--lime);text-transform:uppercase;letter-spacing:1px">Done!</div>':''}`;
+      ${secDone?'<div style="text-align:center;margin-top:16px;font-size:14px;font-weight:800;color:var(--lime);text-transform:uppercase;letter-spacing:1px">Done!</div>':''}`;
   } else {
     const globalIdx=_logExercises.indexOf(cur.ex);
     document.getElementById('wm-body').innerHTML=cur.ex.type==='cardio'?buildWMCardio(cur.ex,globalIdx):buildWMStrength(cur.ex,globalIdx);
@@ -3122,8 +3174,32 @@ function renderWorkoutMode() {
   document.getElementById('wm-prev-btn').style.opacity=_wmCurrentIdx===0?'0.3':'1';
   const isLast=_wmCurrentIdx===navItems.length-1;
   const nb=document.getElementById('wm-next-btn');
-  if(isLast){nb.textContent='🏆 Finish & Save';nb.onclick=()=>{exitWorkoutMode();setTimeout(saveLog,300);};}
-  else{nb.textContent='Next ›';nb.onclick=()=>wmNavigate(1);}
+  if(isLast){
+    nb.textContent='💾 Save Workout';
+    nb.onclick=()=>{
+      // Sync overall notes before saving
+      const on=document.getElementById('wm-overall-notes');
+      if(on){const logN=document.getElementById('log-notes');if(logN)logN.value=on.value;}
+      exitWorkoutMode();
+      setTimeout(saveLog,300);
+    };
+  } else {
+    nb.textContent='Next ›';
+    nb.onclick=()=>wmNavigate(1);
+  }
+}
+
+function wmSelectFeedback(rating) {
+  _selectedFeedback = rating;
+  // Update button styles
+  document.querySelectorAll('#wm-body .feedback-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.rating === rating);
+  });
+}
+
+function syncWMOverallNotes(val) {
+  const logNotes = document.getElementById('log-notes');
+  if (logNotes) logNotes.value = val;
 }
 
 function wmToggleSection(section){
@@ -3223,15 +3299,23 @@ function buildWMCardio(ex,ei){
 }
 
 function wmNavigate(dir){
-  const warmupExs=_logExercises.filter(e=>e.section==='warmup');
-  const mainExs=_logExercises.filter(e=>e.section==='main'||!e.section);
-  const cooldownExs=_logExercises.filter(e=>e.section==='cooldown');
-  const total=(warmupExs.length?1:0)+mainExs.length+(cooldownExs.length?1:0);
   const newIdx=_wmCurrentIdx+dir;
-  if(newIdx<0||newIdx>=total) return;
+  if(newIdx<0||newIdx>=_wmNavCount) return;
   _wmCurrentIdx=newIdx;
   renderWorkoutMode();
   document.getElementById('wm-body').scrollTop=0;
+}
+
+function syncWMNotes(val) {
+  // Save to the right section based on current nav item
+  const notesInput = document.getElementById('wm-notes-input');
+  const section = notesInput?.dataset?.section || 'main';
+  if (section === 'overall') {
+    const logNotes = document.getElementById('log-notes');
+    if (logNotes) logNotes.value = val;
+  } else {
+    _savedSectionNotes[section] = val;
+  }
 }
 function wmSyncSet(ei,si,field,val){if(_logExercises[ei]?.sets?.[si])_logExercises[ei].sets[si][field]=val;}
 function wmToggleSet(ei,si){
@@ -3286,12 +3370,7 @@ function toggleWMNotes() {
   if (!isOpen) document.getElementById('wm-notes-input')?.focus();
 }
 
-function syncWMNotes(val) {
-  // Keep log modal notes in sync
-  const logNotes = document.getElementById('log-notes');
-  if (logNotes) logNotes.value = val;
-  _savedSectionNotes.main = val;
-}
+// syncWMNotes — section-aware version defined above
 
 // ── PLATE CALCULATOR ──
 function openPlateCalc() {
