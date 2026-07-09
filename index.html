@@ -1214,10 +1214,7 @@ function getPlannedWorkout(ds) {
   if (!prog) return null;
   const overrides = _calOverrides||{};
 
-  // If this date's workout was moved away, don't show it here
-  if (overrides[ds]) return null;
-
-  // If a workout from another date was moved TO this date, show it
+  // Check if a workout from another date was moved TO this date — takes priority
   const movedHereEntry = Object.entries(overrides).find(([orig,ov])=>ov.newDate===ds);
   if (movedHereEntry) {
     const [origDate,ov] = movedHereEntry;
@@ -1225,6 +1222,9 @@ function getPlannedWorkout(ds) {
     const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===origDow)||null;
     if (planned) return {...planned, movedFrom:origDate, overrideId:ov.id};
   }
+
+  // If this date's own workout was moved away (and nothing moved in), hide it
+  if (overrides[ds]) return null;
 
   // Normal scheduled workout for this day of week
   const dow = new Date(ds+'T12:00:00').getDay();
@@ -1362,7 +1362,7 @@ async function renderDayPanel(ds) {
         <div class="workout-entry-name" style="color:var(--orange)">${planned.name}${planned.movedFrom?` <span style="font-size:10px;font-weight:600;color:var(--text-muted)">(moved)</span>`:''}</div>
         <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openMovePlannedWorkout('${ds}','${planned.name}','${planned.overrideId||''}')">↕ Move</button>
       </div>
-      <div style="padding:10px 12px" onclick="event.stopPropagation()">
+      <div style="padding:10px 12px">
         ${sectionHtml('Warm-Up','🔥','#D97706','rgba(251,191,36,.08)','rgba(251,191,36,.2)',warmup)}
         ${sectionHtml('Main Workout','💪','var(--orange)','rgba(255,92,0,.08)','rgba(255,92,0,.2)',mainExs)}
         ${sectionHtml('Cool Down','🧘','var(--lime)','rgba(170,255,0,.08)','rgba(170,255,0,.2)',cooldown)}
@@ -1372,8 +1372,8 @@ async function renderDayPanel(ds) {
           <div style="font-size:12.5px;color:var(--text-secondary)">${coachNotes}</div>
         </div>`:''}
       </div>
-      <div style="padding:0 12px 12px" onclick="event.stopPropagation()">
-        <button class="btn btn-primary btn-sm" onclick="openLogModal('${ds}','${planned.name}')">Log This Workout</button>
+      <div style="padding:0 12px 12px">
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openLogModal('${ds}','${planned.name}')">Log This Workout</button>
       </div>
     </div>`;
   }
@@ -3166,6 +3166,7 @@ function exitWorkoutMode() {
 }
 
 let _wmIsLastScreen = false;
+let _wmNavCount = 0;
 
 function wmNextAction() {
   if (_wmIsLastScreen) {
@@ -3180,6 +3181,7 @@ function wmNextAction() {
 }
 
 function renderWorkoutMode() {
+  try {
   const exs=_logExercises;
   const mainExs=exs.filter(e=>e.section==='main'||!e.section);
   const warmupExs=exs.filter(e=>e.section==='warmup');
@@ -3257,8 +3259,7 @@ function renderWorkoutMode() {
       </div>
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:8px">How did it feel?</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-        ${FB.map(f=>`<button class="feedback-btn ${selectedFb===f.r?'selected':''}" data-rating="${f.r}"
-          onclick="wmSelectFeedback('${f.r}')">${f.icon} ${f.label}</button>`).join('')}
+        ${FB.map(f=>`<button class="feedback-btn ${selectedFb===f.r?'selected':''}" data-rating="${f.r}" onclick="wmSelectFeedback('${f.r}')">${f.icon} ${f.label}</button>`).join('')}
       </div>
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:6px">Overall Notes</div>
       <textarea id="wm-overall-notes" rows="3" placeholder="Any comments for your coach or future self..."
@@ -3287,6 +3288,10 @@ function renderWorkoutMode() {
   _wmIsLastScreen = isLast;
   const nb=document.getElementById('wm-next-btn');
   if(nb) nb.textContent = isLast ? '💾 Save Workout' : 'Next ›';
+  } catch(err) {
+    console.error('renderWorkoutMode error:', err);
+    document.getElementById('wm-body').innerHTML = `<div style="padding:20px;color:var(--red);font-size:13px">Error: ${err.message}</div>`;
+  }
 }
 
 function wmSelectFeedback(rating) {
