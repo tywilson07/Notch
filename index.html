@@ -1101,11 +1101,14 @@ async function renderCalendar() {
   try {
     const startDate = dateStr(currentYear, currentMonth, 1);
     const endDate   = dateStr(currentYear, currentMonth, new Date(currentYear, currentMonth+1, 0).getDate());
+    // Extend query by 6 days either side so workouts on boundary days (e.g. moved to June 30 while viewing July) always load
+    const queryStart = (() => { const d = new Date(startDate+'T12:00:00'); d.setDate(d.getDate()-6); return d.toISOString().slice(0,10); })();
+    const queryEnd   = (() => { const d = new Date(endDate+'T12:00:00');   d.setDate(d.getDate()+6); return d.toISOString().slice(0,10); })();
     const [wkts, progs, assigns, assigned, overrides] = await Promise.all([
-      db('workouts','GET',null,`?user_id=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=*`),
+      db('workouts','GET',null,`?user_id=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
       db('programs','GET',null,`?select=*`),
       db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=*`),
-      db('workout_assignments','GET',null,`?assigned_to=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=*`),
+      db('workout_assignments','GET',null,`?assigned_to=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
       db('workout_schedule_overrides','GET',null,`?user_id=eq.${currentUser.id}&select=*`).catch(()=>[])
     ]);
     _calWorkouts = {};
@@ -5291,12 +5294,14 @@ async function renderAthleteCalendar() {
   try {
     const startDate = dateStr(currentYear, currentMonth, 1);
     const endDate   = dateStr(currentYear, currentMonth, new Date(currentYear,currentMonth+1,0).getDate());
+    const queryStart = (() => { const d = new Date(startDate+'T12:00:00'); d.setDate(d.getDate()-6); return d.toISOString().slice(0,10); })();
+    const queryEnd   = (() => { const d = new Date(endDate+'T12:00:00');   d.setDate(d.getDate()+6); return d.toISOString().slice(0,10); })();
     const [wkts, progs, assigns, assigned, coachNotes] = await Promise.all([
-      db('workouts','GET',null,`?user_id=eq.${_activeAthleteId}&date=gte.${startDate}&date=lte.${endDate}&select=*`),
+      db('workouts','GET',null,`?user_id=eq.${_activeAthleteId}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
       db('programs','GET',null,'?select=*'),
       db('program_assignments','GET',null,`?user_id=eq.${_activeAthleteId}&select=*`),
-      db('workout_assignments','GET',null,`?assigned_to=eq.${_activeAthleteId}&date=gte.${startDate}&date=lte.${endDate}&select=*`),
-      db('workout_coach_notes','GET',null,`?athlete_id=eq.${_activeAthleteId}&coach_id=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=*`)
+      db('workout_assignments','GET',null,`?assigned_to=eq.${_activeAthleteId}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
+      db('workout_coach_notes','GET',null,`?athlete_id=eq.${_activeAthleteId}&coach_id=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`)
     ]);
     _athCalWorkouts = {};
     (wkts||[]).forEach(w => { if(!_athCalWorkouts[w.date])_athCalWorkouts[w.date]=[]; _athCalWorkouts[w.date].push(w); });
