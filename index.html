@@ -1573,7 +1573,17 @@ function getPrevSetResult(name, setIdx) {
 
 function getProgressionSuggestion(name, setIdx, targetReps) {
   const sessions = _prevCache[name] || [];
-  if (!sessions.length) return null;
+  // If no previous sessions at all, suggest starting point from target range
+  if (!sessions.length) {
+    if (!targetReps) return null;
+    const str = String(targetReps).trim();
+    if (str.includes('-')) {
+      const lower = parseInt(str.split('-')[0])||0;
+      return lower > 0 ? {w:0, r:lower, bw:false, isIncrease:false} : null;
+    }
+    const n = parseInt(str)||0;
+    return n > 0 ? {w:0, r:n, bw:false, isIncrease:false} : null;
+  }
 
   // Find the most recent session that has actual data for this set index
   let set = null;
@@ -1653,17 +1663,16 @@ async function openLogModal(ds, suggestedName) {
       if (isSimple) return {name,type:'simple',section:sectionLabel,done:false,expanded:false};
       const targetSets = typeof exData === 'object' && exData.sets ? parseInt(exData.sets)||3 : 3;
       const targetReps = typeof exData === 'object' ? (exData.reps||'') : '';
-      const repsLower = targetReps.includes('-') ? targetReps.split('-')[0].trim()
-        : /^\d+$/.test(targetReps.trim()) ? targetReps.trim() : '';
       // Respect setType from program builder; fall back to name-based detection
       const progSetType = typeof exData === 'object' ? (exData.setType||null) : null;
       const detectedBW = /pull.up|push.up|dip|chin|handstand|muscle.up/i.test(name);
       const setType = progSetType || (detectedBW ? 'bodyweight' : 'weight');
       const isAssisted = setType === 'assisted';
       const isBW2 = setType === 'bodyweight';
+      // Leave r empty so ghost suggestion shows — don't pre-fill with lower bound
       return {name,type:'strength',section:sectionLabel,setType,
         targetSets, targetReps,
-        sets:Array.from({length:targetSets},()=>({w:'',r:repsLower,bw:isBW2,assisted:isAssisted,done:false})),
+        sets:Array.from({length:targetSets},()=>({w:'',r:'',bw:isBW2,assisted:isAssisted,done:false})),
         expanded:false};
     };
     _logExercises = [
@@ -1904,13 +1913,9 @@ function buildStrengthInner(ex,ei){
   const rows=(ex.sets||[]).map((s,si)=>{
     const prev=getPrevSetResult(ex.name,si);
     const suggestion = (!s.w && !s.r) ? getProgressionSuggestion(ex.name, si, ex.targetReps) : null;
-    const wPlaceholder = suggestion
-      ? (suggestion.bw
-          ? (suggestion.w ? `+${suggestion.w}` : '0')
-          : suggestion.w > 0
-            ? `${suggestion.w}${suggestion.isIncrease?' ↑':''}`
-            : 'lb')
-      : (isBW ? '0' : 'lb');
+    const wPlaceholder = suggestion && suggestion.w > 0
+      ? `${suggestion.w}${suggestion.isIncrease?' ↑':''}`
+      : (suggestion?.bw ? 'BW' : isBW ? 'BW' : 'lb');
     const rPlaceholder = suggestion && suggestion.r > 0 ? `${suggestion.r}` : 'reps';
     let weightCell;
     if (isBW) {
@@ -2287,11 +2292,9 @@ async function openLogFromAssigned(assignmentId, ds, workoutName) {
       if (isSimple) return {name,type:'simple',section,done:false,expanded:false};
       const targetSets = typeof exData === 'object' && exData.sets ? parseInt(exData.sets)||3 : 3;
       const targetReps = typeof exData === 'object' ? (exData.reps||'') : '';
-      const repsLower = targetReps.includes('-') ? targetReps.split('-')[0].trim()
-        : /^\d+$/.test(targetReps.trim()) ? targetReps.trim() : '';
       return {name,type:'strength',section,setType:isBW?'bodyweight':'weight',
         targetSets, targetReps,
-        sets:Array.from({length:targetSets},()=>({w:'',r:repsLower,bw:isBW,done:false})),
+        sets:Array.from({length:targetSets},()=>({w:'',r:'',bw:isBW,done:false})),
         expanded:false};
     };
     _logExercises = [
