@@ -1086,6 +1086,7 @@ let _calWorkouts = {};   // local cache {date: [workout,...]}
 let _calAssigned = {};   // assigned workouts from coach {date: [assignment,...]}
 let _calPrograms = [];   // programs visible to this user
 let _activeProgId = null;
+let _activeProgStartDate = null;
 let _calOverrides = {};  // planned workout overrides {newDate: {originalDate, workoutName, programId}}
 
 function todayStr() {
@@ -1124,6 +1125,7 @@ async function renderCalendar() {
     _calPrograms = progs || [];
     const activeAssign = (assigns||[]).find(a=>a.active);
     _activeProgId = activeAssign ? activeAssign.program_id : null;
+    _activeProgStartDate = activeAssign?.start_date || activeAssign?.created_at?.slice(0,10) || null;
     // Build overrides map: originalDate → newDate
     _calOverrides = {};
     (overrides||[]).forEach(o => {
@@ -1229,6 +1231,24 @@ function getPlannedWorkouts(ds) {
   if (!prog) return [];
   const overrides = _calOverrides||{};
   const results = [];
+
+  // Enforce program week limit — only show planned workouts within the program duration
+  if (_activeProgStartDate && prog.weeks) {
+    const startMs = new Date(_activeProgStartDate+'T00:00:00').getTime();
+    const endMs = startMs + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
+    const dsMs = new Date(ds+'T00:00:00').getTime();
+    // Allow moved workouts even if slightly outside window, but not regular scheduled ones
+    if (dsMs < startMs || dsMs >= endMs) {
+      // Only show if a workout was explicitly moved to this date
+      Object.entries(overrides).forEach(([origDate,ov])=>{
+        if (ov.newDate !== ds) return;
+        const origDow = new Date(origDate+'T12:00:00').getDay();
+        const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===origDow);
+        if (planned) results.push({...planned, movedFrom:origDate, overrideId:ov.id});
+      });
+      return results;
+    }
+  }
 
   // Add workouts moved TO this date from other dates
   Object.entries(overrides).forEach(([origDate,ov])=>{
@@ -2410,21 +2430,27 @@ async function renderPrograms(){
 
 async function activateProgram(id){
   try{
+    // Ask for start date
+    const startInput = prompt('Program start date (YYYY-MM-DD):', todayStr());
+    if (startInput === null) return; // cancelled
+    const startDate = (startInput.trim().match(/^\d{4}-\d{2}-\d{2}$/) ? startInput.trim() : todayStr());
+
     // Deactivate all, then set new active
     const existing=await db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=id`);
     for(const a of (existing||[])){
       await db('program_assignments','PATCH',{active:false},`?id=eq.${a.id}`);
     }
-    // Upsert
     const check=await db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&program_id=eq.${id}&select=id`);
     if(check&&check.length){
-      await db('program_assignments','PATCH',{active:true},`?user_id=eq.${currentUser.id}&program_id=eq.${id}`);
+      await db('program_assignments','PATCH',{active:true,start_date:startDate},`?user_id=eq.${currentUser.id}&program_id=eq.${id}`);
     } else {
-      await db('program_assignments','POST',{user_id:currentUser.id,program_id:id,active:true});
+      await db('program_assignments','POST',{user_id:currentUser.id,program_id:id,active:true,start_date:startDate});
     }
-    renderPrograms(); toast('Program activated!');
+    _activeProgStartDate = startDate;
+    renderPrograms(); renderCalendar(); toast('Program activated! ✓');
   }catch(e){toast('Could not activate');console.error(e);}
 }
+
 
 async function deactivateProgram(){
   try{
@@ -4698,7 +4724,7 @@ function closeCompletion() {
 async function updateProgProgress() {
   try {
     const assigns = await db('program_assignments','GET',null,
-      `?user_id=eq.${currentUser.id}&active=eq.true&select=program_id,assigned_at`);
+      `?user_id=eq.${currentUser.id}&active=eq.true&select=program_id,created_at,start_date`);
     const assign = assigns?.[0];
     if (!assign) { document.getElementById('prog-progress-label').style.display='none'; return; }
 
@@ -4706,15 +4732,31 @@ async function updateProgProgress() {
       (await db('programs','GET',null,`?id=eq.${assign.program_id}&select=*`))?.[0];
     if (!prog) return;
 
-    // Total workouts in program = workout days per week × weeks
     const daysPerWeek = (prog.schedule||[]).length;
     const totalWorkouts = daysPerWeek * (prog.weeks||1);
 
-    // Count logged workouts since program was assigned
-    const startDate = new Date(assign.assigned_at).toISOString().slice(0,10);
+    // Use start_date if set, otherwise fall back to created_at, then today
+    const startDate = assign.start_date ||
+      (assign.created_at ? assign.created_at.slice(0,10) : todayStr());
+
+    // Compute end date
+    const endDate = (() => {
+      const d = new Date(startDate+'T00:00:00');
+      d.setDate(d.getDate() + (prog.weeks||1) * 7);
+      return d.toISOString().slice(0,10);
+    })();
+
+    // Count workouts logged between start and end dates
     const logged = await db('workouts','GET',null,
-      `?user_id=eq.${currentUser.id}&date=gte.${startDate}&select=id`);
-    const completedWorkouts = Math.min(totalWorkouts, (logged||[]).length);
+      `?user_id=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=id,day_name`);
+    
+    // Only count workouts that match a scheduled day name
+    const scheduleNames = (prog.schedule||[]).map(d=>d.name).filter(Boolean);
+    const matchedCount = scheduleNames.length > 0
+      ? (logged||[]).filter(w => scheduleNames.includes(w.day_name)).length
+      : (logged||[]).length;
+    
+    const completedWorkouts = Math.min(totalWorkouts, matchedCount);
     const pct = totalWorkouts > 0 ? Math.round((completedWorkouts/totalWorkouts)*100) : 0;
 
     const el = document.getElementById('prog-progress-label');
