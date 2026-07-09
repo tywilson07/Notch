@@ -1607,8 +1607,9 @@ async function openLogModal(ds, suggestedName) {
   if (planned && (planned.warmup?.length || planned.exercises?.length || planned.cooldown?.length)) {
     const toEx = (exData, sectionLabel) => {
       const name = typeof exData === 'string' ? exData : (exData.name||'');
-      const isCardio=/run|row|bike|cardio|swim|walk/i.test(name);
-      const isBW=/pull.up|push.up|dip|chin|handstand|muscle.up/i.test(name);
+      const libEx = _exLibrary.find(e=>e.name.toLowerCase()===name.toLowerCase());
+      const libType = libEx?.exercise_type;
+      const isCardio = libType==='cardio' || (!libType && /run|row|bike|cardio|swim|walk/i.test(name));
       const isSimple = sectionLabel === 'warmup' || sectionLabel === 'cooldown';
       if (isCardio) return {name,type:'cardio',section:sectionLabel,cardio:{dist:'',pace:'',dur:'',done:false},expanded:false};
       if (isSimple) return {name,type:'simple',section:sectionLabel,done:false,expanded:false};
@@ -5600,32 +5601,69 @@ async function renderExerciseLibrary() {
   } catch(e) { body.innerHTML = '<div class="error-msg">Could not load library</div>'; }
 }
 
+let _librarySearch = '';
+
 function renderLibraryList() {
   const body = document.getElementById('library-body');
   const groups = ['All','Chest','Back','Legs','Shoulders','Arms','Core','Cardio','Warmup','Cooldown'];
-  const filtered = _libraryFilter==='All'
-    ? _exLibrary.filter(e=>!['Warmup','Cooldown'].includes(e.muscle_group)||_libraryFilter==='All')
+
+  // Apply muscle group filter
+  let filtered = _libraryFilter==='All'
+    ? _exLibrary
     : _exLibrary.filter(e=>e.muscle_group===_libraryFilter);
+
+  // Apply search filter
+  if (_librarySearch) {
+    const q = _librarySearch.toLowerCase();
+    filtered = filtered.filter(e=>
+      e.name.toLowerCase().includes(q) ||
+      (e.muscle_group||'').toLowerCase().includes(q) ||
+      (e.equipment||'').toLowerCase().includes(q) ||
+      (e.alternatives||[]).some(a=>a.toLowerCase().includes(q))
+    );
+  }
+
   const chips = groups.map(g=>`
     <button class="muscle-chip ${_libraryFilter===g?'active':''}" onclick="setLibraryFilter('${g}')">${g}</button>
   `).join('');
-  const cards = (filtered.length?filtered:_exLibrary).map(ex=>{
+
+  const cards = filtered.map(ex=>{
     const alts = (ex.alternatives||[]).slice(0,4);
     return `<div class="library-card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="flex:1;min-width:0">
           <div class="library-card-name">${ex.name}</div>
-          <div class="library-card-meta">${[ex.muscle_group,ex.equipment,ex.category].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(' · ')}</div>
+          <div class="library-card-meta">${[ex.muscle_group,ex.equipment].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(' · ')}</div>
           ${alts.length?`<div class="library-card-alts">⇄ ${alts.join(', ')}</div>`:'<div class="library-card-alts" style="color:var(--text-muted);font-style:italic">No alternatives set</div>'}
         </div>
         <button class="btn btn-white btn-xs" onclick="openEditExercise('${ex.id}')">Edit</button>
       </div>
     </div>`;
   }).join('');
+
   body.innerHTML = `
+    <div style="position:relative;margin-bottom:10px">
+      <input id="library-search" type="search" placeholder="Search exercises, muscle groups, equipment..."
+        value="${_librarySearch}"
+        oninput="_librarySearch=this.value;renderLibraryList()"
+        style="padding-left:32px;font-size:13px">
+      <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">🔍</span>
+      ${_librarySearch?`<button onclick="_librarySearch='';renderLibraryList()"
+        style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px">✕</button>`:''}
+    </div>
     <div class="muscle-filter">${chips}</div>
-    <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px">${filtered.length} exercise${filtered.length!==1?'s':''}</div>
-    ${cards||'<div style="color:var(--text-muted);padding:20px 0;text-align:center">No exercises in this group yet</div>'}`;
+    <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px">
+      ${filtered.length} exercise${filtered.length!==1?'s':''}${_librarySearch?` matching "${_librarySearch}"`:''}
+    </div>
+    ${cards||`<div style="color:var(--text-muted);padding:20px 0;text-align:center">
+      ${_librarySearch?`No exercises matching "${_librarySearch}" — <button class="btn btn-xs btn-ghost" onclick="openAddExercise()">Add it</button>`:'No exercises in this group yet'}
+    </div>`}`;
+
+  // Re-focus search if it was active
+  if (_librarySearch) {
+    const inp = document.getElementById('library-search');
+    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  }
 }
 
 function setLibraryFilter(group) {
@@ -5653,12 +5691,20 @@ function buildExerciseModal(ex) {
   const groupOpts = groups.map(g=>`<option ${ex?.muscle_group===g?'selected':''}>${g}</option>`).join('');
   const eqOpts = equipment.map(e=>`<option ${ex?.equipment===e?'selected':''}>${e}</option>`).join('');
   const altsText = (ex?.alternatives||[]).join(', ');
+  const exType = ex?.exercise_type || 'strength';
+  const typeOpts = ['strength','cardio','simple'].map(t=>
+    `<option value="${t}" ${exType===t?'selected':''}>${t==='strength'?'Strength (sets × reps)':t==='cardio'?'Cardio (distance/time)':'Simple (checkbox only)'}</option>`
+  ).join('');
   document.getElementById('modal-body').innerHTML = `
     <div class="field"><label>Exercise Name</label>
       <input id="ex-edit-name" value="${ex?.name||''}" placeholder="e.g. Dumbbell Bench Press"></div>
     <div class="row">
       <div class="field"><label>Muscle Group</label><select id="ex-edit-group">${groupOpts}</select></div>
       <div class="field"><label>Equipment</label><select id="ex-edit-eq">${eqOpts}</select></div>
+    </div>
+    <div class="field">
+      <label>Exercise Type <span style="font-size:10.5px;color:var(--text-muted)">— how it logs</span></label>
+      <select id="ex-edit-type">${typeOpts}</select>
     </div>
     <div class="field">
       <label>Alternatives <span style="font-size:10.5px;color:var(--text-muted)">(comma-separated)</span></label>
@@ -5679,7 +5725,8 @@ async function saveExerciseEdit(existingId) {
   const equipment = document.getElementById('ex-edit-eq')?.value||'Any';
   const altsRaw = document.getElementById('ex-edit-alts')?.value||'';
   const alternatives = altsRaw.split(',').map(s=>s.trim()).filter(Boolean);
-  const payload = {name, muscle_group, equipment, alternatives, category: muscle_group};
+  const exercise_type = document.getElementById('ex-edit-type')?.value||'strength';
+  const payload = {name, muscle_group, equipment, alternatives, category: muscle_group, exercise_type};
   try {
     if (existingId) {
       await db('exercises','PATCH',payload,`?id=eq.${existingId}`);
