@@ -210,7 +210,7 @@ label{font-size:11px;font-weight:800;color:var(--text-muted);display:block;margi
 .max-card-pr{font-size:9.5px;font-weight:800;color:var(--orange);background:var(--orange-dim);border-radius:3px;padding:1px 6px;display:inline-block;margin-top:3px;text-transform:uppercase;letter-spacing:.5px;border:1px solid var(--orange)40}
 
 /* ── MODAL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:flex;align-items:flex-end;justify-content:center}
 @media(min-width:600px){.modal-overlay{align-items:center}}
 .modal{background:var(--surface);border-radius:var(--radius-lg) var(--radius-lg) 0 0;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;border-top:1px solid var(--border)}
 @media(min-width:600px){.modal{border-radius:var(--radius-lg);border:1px solid var(--border)}}
@@ -448,7 +448,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .more-menu-item:hover,.more-menu-item:active{background:var(--surface2);color:var(--orange)}
 
 /* ── PROGRAM BUILDER EXERCISE ROWS ── */
-.cp-ex-row{display:grid;grid-template-columns:1fr 42px 10px 42px 24px;gap:4px;align-items:center}
+.cp-ex-row{display:flex;flex-direction:column;gap:4px}.cp-ex-row-inputs{display:grid;grid-template-columns:1fr 42px 10px 42px 24px;gap:4px;align-items:center}
 .cp-ex-name{font-size:13px;padding:6px 8px}
 .cp-ex-sets,.cp-ex-reps{font-family:var(--mono);font-size:13px;font-weight:700;padding:6px 4px;text-align:center}
 .cp-ex-remove{background:none;border:none;color:var(--gray-300);cursor:pointer;font-size:13px;padding:0;text-align:center;transition:color .12s}
@@ -1420,26 +1420,63 @@ async function renderDayPanel(ds) {
 
 // ── Drag & Drop ──
 let _dragFromDate=null, _dragWorkoutId=null;
+let _dragPlannedDate = null;
+
+function calDragStartPlanned(e, fromDate) {
+  _dragPlannedDate = fromDate;
+  _dragFromDate = null; _dragWorkoutId = null; // clear logged drag state
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', JSON.stringify({plannedDate: fromDate}));
+  setTimeout(()=>{ if(e.target) e.target.style.opacity = '.4'; }, 0);
+}
+
 function calDragStart(e,fromDate,id){
   _dragFromDate=fromDate; _dragWorkoutId=id;
+  _dragPlannedDate = null; // clear planned drag state
   e.dataTransfer.effectAllowed='move';
   e.dataTransfer.setData('text/plain',JSON.stringify({fromDate,id}));
   setTimeout(()=>{if(e.target)e.target.style.opacity='.4';},0);
 }
 function calDragEnd(e){
   if(e.target)e.target.style.opacity='';
-  _dragFromDate=null; _dragWorkoutId=null;
+  _dragFromDate=null; _dragWorkoutId=null; _dragPlannedDate=null;
   document.querySelectorAll('.cal-cell.drag-over').forEach(el=>el.classList.remove('drag-over'));
 }
 function calDragOver(e,toDate){
   e.preventDefault(); e.dataTransfer.dropEffect='move';
-  if(toDate!==_dragFromDate) e.currentTarget.classList.add('drag-over');
+  if(toDate!==(_dragFromDate||_dragPlannedDate)) e.currentTarget.classList.add('drag-over');
 }
 function calDragLeave(e){
   if(!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over');
 }
 async function calDrop(e,toDate){
   e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+
+  // Handle planned workout drag
+  if (_dragPlannedDate && _dragPlannedDate !== toDate) {
+    const fromDate = _dragPlannedDate;
+    _dragPlannedDate = null;
+    try {
+      const planned = getPlannedWorkout(fromDate);
+      const workoutName = planned?.name || '';
+      // Check if there's an existing override for this date
+      const existingOverride = Object.entries(_calOverrides||{}).find(([orig,ov])=>orig===fromDate);
+      if (existingOverride) {
+        await db('workout_schedule_overrides','PATCH',{new_date:toDate},`?id=eq.${existingOverride[1].id}`);
+      } else {
+        await db('workout_schedule_overrides','POST',{
+          user_id:currentUser.id, original_date:fromDate,
+          new_date:toDate, workout_name:workoutName, program_id:_activeProgId||null
+        });
+      }
+      toast(`Moved to ${new Date(toDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ✓`);
+      selectedDate = toDate;
+      renderCalendar();
+    } catch(err) { toast('Move failed — try again'); console.error(err); }
+    return;
+  }
+
+  // Handle logged workout drag
   let fromDate=_dragFromDate, id=_dragWorkoutId;
   if(!fromDate||!id||fromDate===toDate) return;
   try {
@@ -2426,10 +2463,10 @@ function buildProgramModal(prog){
         ${typeBtn('bodyweight','BW','var(--lime)')}
         ${typeBtn('assisted','Assisted','var(--purple)')}
       </div>` : '';
-      return `<div class="cp-ex-row" id="cpex-${dayIdx}-${section}-${ei}" style="flex-wrap:wrap">
-        <div style="display:flex;gap:4px;flex:1;min-width:0;align-items:center">
+      return `<div class="cp-ex-row" id="cpex-${dayIdx}-${section}-${ei}">
+        <div class="cp-ex-row-inputs">
           <input class="cp-ex-name" placeholder="Exercise name" value="${name}"
-            oninput="cpExField(${dayIdx},'${section}',${ei},'name',this.value)" style="flex:1;min-width:0">
+            oninput="cpExField(${dayIdx},'${section}',${ei},'name',this.value)">
           <input class="cp-ex-sets" type="number" placeholder="Sets" value="${sets}" min="1" max="20"
             oninput="cpExField(${dayIdx},'${section}',${ei},'sets',this.value)" title="Sets">
           <span style="color:var(--text-muted);font-size:13px;flex-shrink:0">×</span>
@@ -3594,7 +3631,7 @@ function openPlateCalc() {
     </div>
     <div id="plate-result" style="margin-top:14px"></div>`;
   document.getElementById('modal-footer').innerHTML = `
-    <button class="btn btn-primary btn-full" onclick="closeModal();document.getElementById('workout-mode').classList.add('show')">Done</button>`;
+    <button class="btn btn-primary btn-full" onclick="closeModal()">Done</button>`;
   window._barWeight = 45;
   showModal();
 }
@@ -3849,7 +3886,11 @@ function getCellDots(ds) {
   // Show planned workouts from program if no logged workout
   if (logs.length === 0 && assigned.length === 0) {
     getPlannedWorkouts(ds).forEach(p => {
-      html += `<span class="cal-workout-dot cal-dot-planned">· ${p.name}</span>`;
+      html += `<span class="cal-workout-dot cal-dot-planned" data-date="${ds}"
+        draggable="true"
+        ondragstart="calDragStartPlanned(event,'${ds}')"
+        ondragend="calDragEnd(event)"
+        title="${p.name} — drag to reschedule">· ${p.name}</span>`;
     });
   }
   return html;
