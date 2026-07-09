@@ -1208,27 +1208,35 @@ function buildCalGrid() {
 
 // (old simple getCellDots removed — full version used below)
 
-function getPlannedWorkout(ds) {
-  if (!_activeProgId) return null;
+function getPlannedWorkouts(ds) {
+  // Returns array — supports multiple planned workouts on same day
+  if (!_activeProgId) return [];
   const prog = _calPrograms.find(p=>p.id===_activeProgId);
-  if (!prog) return null;
+  if (!prog) return [];
   const overrides = _calOverrides||{};
+  const results = [];
 
-  // Check if a workout from another date was moved TO this date — takes priority
-  const movedHereEntry = Object.entries(overrides).find(([orig,ov])=>ov.newDate===ds);
-  if (movedHereEntry) {
-    const [origDate,ov] = movedHereEntry;
+  // Add workouts moved TO this date from other dates
+  Object.entries(overrides).forEach(([origDate,ov])=>{
+    if (ov.newDate !== ds) return;
     const origDow = new Date(origDate+'T12:00:00').getDay();
-    const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===origDow)||null;
-    if (planned) return {...planned, movedFrom:origDate, overrideId:ov.id};
+    const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===origDow);
+    if (planned) results.push({...planned, movedFrom:origDate, overrideId:ov.id});
+  });
+
+  // Add normally scheduled workout if not moved away
+  if (!overrides[ds]) {
+    const dow = new Date(ds+'T12:00:00').getDay();
+    const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===dow);
+    if (planned) results.push(planned);
   }
 
-  // If this date's own workout was moved away (and nothing moved in), hide it
-  if (overrides[ds]) return null;
+  return results;
+}
 
-  // Normal scheduled workout for this day of week
-  const dow = new Date(ds+'T12:00:00').getDay();
-  return (prog.schedule||[]).find(s=>parseInt(s.dow)===dow)||null;
+function getPlannedWorkout(ds) {
+  // Legacy single accessor — returns first planned workout
+  return getPlannedWorkouts(ds)[0]||null;
 }
 
 function shiftMonth(delta) {
@@ -1261,7 +1269,7 @@ async function renderDayPanel(ds) {
   const label = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   const logs = _calWorkouts[ds] || [];
   const assigned = _calAssigned[ds] || [];
-  const planned = getPlannedWorkout(ds);
+  const plannedList = getPlannedWorkouts(ds);
   let bodyHtml = '';
 
   // Show coach-assigned workouts first (in purple)
@@ -1336,13 +1344,13 @@ async function renderDayPanel(ds) {
     </div>`;
   });
 
-  if (planned && logs.length===0) {
+  plannedList.forEach(planned => {
+    if (logs.length > 0) return; // don't show planned if already logged
     const warmup   = planned.warmup   || [];
     const mainExs  = planned.exercises || [];
     const cooldown = planned.cooldown  || [];
     const coachNotes = planned.coachNotes || '';
 
-    // Format exercise: handle both string and object format
     const fmtEx = ex => {
       const name = typeof ex === 'string' ? ex : (ex.name||'');
       const sets = typeof ex === 'object' && ex.sets ? ex.sets : '';
@@ -1376,7 +1384,7 @@ async function renderDayPanel(ds) {
         <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openLogModal('${ds}','${planned.name}')">Log This Workout</button>
       </div>
     </div>`;
-  }
+  });
   if (!bodyHtml) bodyHtml=`<div style="padding:16px 0;text-align:center;color:var(--gray-400);font-size:12.5px">Rest day — nothing logged.</div>`;
 
   panel.innerHTML=`
@@ -3333,6 +3341,70 @@ function wmToggleSimple(ei){
   renderWorkoutMode();
 }
 
+const FORM_CUES = {
+  // Chest
+  'Bench Press': ['Retract your shoulder blades and keep them pinched throughout','Bar should touch your lower chest, not your neck','Keep feet flat on the floor, slight arch in lower back','Drive the bar up and slightly back toward your face'],
+  'Incline Bench Press': ['Set bench to 30-45 degrees — higher loses chest emphasis','Retract shoulder blades hard before unracking','Bar touches upper chest, not your collar bone','Control the descent — about 2 seconds down'],
+  'Dumbbell Bench Press': ['Start with dumbbells on your knees, kick them up as you lie back','Neutral or slight outward angle at the elbow (not 90 degrees out)','Squeeze the chest at the top — imagine bending the dumbbells toward each other','Touch the dumbbells lightly at the top, don\'t let them crash'],
+  'Incline Dumbbell Bench Press': ['Bench at 30-45 degrees','Let dumbbells travel in a slight arc, not straight up','Squeeze upper chest hard at the top','Control the negative — slow down builds more muscle'],
+  'Push-Ups': ['Hands slightly wider than shoulders, fingers forward','Keep a straight line from head to heels — no sagging hips','Lower chest to within an inch of the floor','Elbows at about 45 degrees, not flared out'],
+  'Cable Fly': ['Use a weight you can control through the full arc','Slight bend in the elbows — maintain it throughout','Bring hands together in front of your chest, not above it','Squeeze the chest hard at the peak and hold briefly'],
+  'Chest Dip': ['Lean forward to target chest over triceps','Go deep — upper arms should be parallel to the floor','Come all the way up but don\'t lock elbows hard','Keep elbows tracking back, not flaring wide'],
+  // Back
+  'Deadlift': ['Bar over mid-foot, hip-width stance','Hinge at the hips, push the floor away — don\'t pull with your back','Keep bar close to your body the entire way up','Lock out hips and knees together at the top — don\'t hyperextend'],
+  'Barbell Row': ['Hinge to about 45 degrees, knees soft','Pull bar to your lower chest/upper stomach','Drive elbows back and squeeze shoulder blades together','Lower with control — don\'t let it drop'],
+  'Dumbbell Row': ['Support with opposite hand and knee on bench','Let the dumbbell hang, then row to your hip (not your armpit)','Think about pulling with your elbow, not your hand','Full stretch at the bottom — let the shoulder blade protract'],
+  'Pull-Ups': ['Start from a dead hang with shoulder blades depressed','Pull elbows down and back — think about touching your elbows to your hips','Chin over bar, then lower all the way back to dead hang','No kipping — controlled movement builds real strength'],
+  'Chin-Ups': ['Underhand grip, shoulder width','Elbows stay close to your sides throughout','Focus on squeezing your back, not just pulling with your biceps','Full range — dead hang to chin over bar'],
+  'Lat Pulldown': ['Grip slightly wider than shoulder width','Lean back slightly — maybe 10-15 degrees','Pull bar to your upper chest while squeezing lats','Control the ascent — let arms fully extend before next rep'],
+  'Seated Cable Row': ['Sit tall, slight forward lean to start, pull to upright','Drive elbows back past your torso','Squeeze shoulder blades together hard at the peak','Reach forward with control — stretch the lats'],
+  'Face Pull': ['Set cable at upper-chest to eye height','Pull to your face, elbows flared HIGH — above shoulder height','External rotate at the end — hands end up by your ears','Light weight, full control — this is a shoulder health exercise'],
+  'T-Bar Row': ['Neutral spine, hinge at the hips','Pull to your lower chest/upper abs','Squeeze the middle of your back — retract those shoulder blades','Don\'t use momentum — full control both directions'],
+  'Assisted Pull-Ups': ['Same technique as regular pull-ups — don\'t let the assistance make you lazy','Full dead hang at the bottom, chin over bar at the top','Reduce the assistance weight as you get stronger','Focus on feeling the lats — this is skill practice for unassisted pull-ups'],
+  // Legs
+  'Back Squat': ['Bar sits on traps (high bar) or rear deltoids (low bar)','Stance shoulder-width or slightly wider, toes out 15-30 degrees','Break at hips and knees simultaneously','Hit parallel or below — depth is non-negotiable for full development'],
+  'Front Squat': ['Bar rests on front deltoids, elbows up high','More upright torso than back squat — stay tall','Knees track over toes aggressively','Challenging for mobility — work on wrist and ankle flexibility'],
+  'Romanian Deadlift': ['Soft bend in knees — this is a hip hinge, not a squat','Push hips back as you lower, keeping bar close to legs','Feel a deep stretch in the hamstrings at the bottom','Drive hips forward to stand — squeeze glutes at the top'],
+  'Leg Press': ['Feet shoulder-width, positioned so knees don\'t cave in','Don\'t lock your knees at the top — keep slight tension','Don\'t let your lower back round off the pad at the bottom','Controlled descent is where the growth happens'],
+  'Leg Curl': ['Don\'t let your hips rise off the pad as you curl','Squeeze the hamstrings hard at peak contraction','Slow on the way down — 2-3 second negative','Full extension between reps'],
+  'Leg Extension': ['Sit tall, don\'t let hips lift off seat','Full extension and squeeze at the top','Slow controlled descent — don\'t let the weight pull your legs down','Point toes slightly inward to bias the VMO (inner quad)'],
+  'Bulgarian Split Squat': ['Back foot elevated on a bench, front foot far enough forward','Lower straight down — most of the weight through the front heel','Front knee tracks over toes — don\'t let it cave in','This will feel hard — it\'s one of the best leg exercises there is'],
+  'Calf Raises': ['Full range of motion — deep stretch at the bottom, all the way up on toes','Calves respond well to slow controlled reps and high volume','Pause at the top and squeeze','Don\'t bounce at the bottom — control the stretch'],
+  'Hip Thrust': ['Bar padded and across your hips, upper back on bench','Drive through your heels and squeeze your glutes hard at the top','Your shins should be roughly vertical at the top position','Don\'t hyperextend your lower back — it\'s a glute exercise'],
+  'Walking Lunges': ['Long stride so front shin stays vertical','Back knee drops close to but doesn\'t touch the floor','Torso upright — don\'t lean forward','Drive through front heel to step through'],
+  // Shoulders
+  'Overhead Press': ['Bar starts at upper chest/chin level','Press straight up — bar travels slightly back as it clears your head','Lock out overhead with biceps by ears','Core tight throughout — don\'t hyperextend your lower back'],
+  'Dumbbell Shoulder Press': ['Can be done seated or standing — standing is harder and more functional','Dumbbells start at ear height, press to neutral at top','Don\'t flare elbows too wide — slight angle forward protects the shoulder','Full lockout at the top, controlled descent'],
+  'Lateral Raise': ['Slight bend in elbow throughout','Lead with your elbows, not your hands','Stop at shoulder height — going higher shifts to traps','The weight should be light — this is an isolation exercise'],
+  'Cable Lateral Raise': ['Cable keeps tension throughout the range unlike dumbbells','Lean slightly away from the cable for better resistance curve','Stop at shoulder height, squeeze the delt','Slow and controlled — momentum defeats the purpose'],
+  'Front Raise': ['Palms facing down or neutral (thumbs up)','Raise to shoulder height only — not above','Slight bend in the elbow','Alternate arms or do both — both work fine'],
+  'Rear Delt Fly': ['Hinge forward to near parallel with the floor','Arms out to sides with slight elbow bend — like a reverse hug','Squeeze shoulder blades together and rear delts at the top','Very light weight — this muscle is often undertrained'],
+  // Arms
+  'Barbell Curl': ['Keep elbows pinned at your sides throughout','Full range — start with arms nearly straight, curl to peak contraction','No swinging — your torso shouldn\'t move','Slow negative — lower in 2-3 seconds'],
+  'Dumbbell Curl': ['Can be done alternating or together','Supinate (rotate palm up) as you curl for full bicep contraction','Don\'t swing or lean back at the top','Touch the dumbbell to your shoulder at the top'],
+  'Hammer Curl': ['Palms facing each other (neutral grip) throughout','Targets the brachialis and brachioradialis more than the bicep','Elbows stay at sides — same as regular curl','Can be done alternating or together'],
+  'Cable Curl': ['Set the cable low — this keeps tension at the top where dumbbells lose it','Keep elbows at your sides','Squeeze hard at the top of the movement','Great as a finishing exercise after barbell or dumbbell curls'],
+  'Tricep Pushdown': ['Cable set high, use rope or bar attachment','Elbows stay pinned at your sides — they should not move at all','Full extension at the bottom — lock out and squeeze','Control the weight back up — don\'t let it pull your arms up'],
+  'Skull Crushers': ['Bar comes down to your forehead (hence the name — be careful)','Elbows stay pointing at the ceiling throughout','Full extension at the top without locking elbows aggressively','Can use EZ bar, straight bar, or dumbbells'],
+  'Overhead Tricep Extension': ['One or two dumbbells held overhead','Elbows stay pointed forward — don\'t let them flare wide','Lower behind your head and fully extend back up','Great for the long head of the tricep — often undertrained'],
+  'Dips': ['Tricep dips: stay upright, elbows close to body','Chest dips: lean forward, elbows out — very different exercise','Lower until upper arms are parallel to the floor','Full lockout at the top — squeeze the triceps'],
+  'Assisted Dips': ['Same technique as regular dips — the assistance just makes it lighter','More assistance = easier, reduce it over time as you get stronger','Control the movement — don\'t let the machine bounce you','Work toward bodyweight dips as your goal'],
+  // Core
+  'Plank': ['Forearms on the ground, elbows under shoulders','Squeeze everything — glutes, abs, quads','Keep a straight line from head to heels — no sagging or piking','Breathe normally — don\'t hold your breath'],
+  'Ab Wheel': ['Start on knees — don\'t go to full standing until you\'re strong','Roll out as far as you can while keeping your lower back flat','Pull back using your abs, not your lower back','This is harder than it looks — start with a short range of motion'],
+  'Cable Crunch': ['Kneel in front of the cable, rope behind your head','Crunch DOWN — your hips don\'t move, only your spine flexes','Round your back to bring elbows toward your knees','Hold the contraction at the bottom and feel the abs'],
+  'Russian Twist': ['Feet can be on the floor (easier) or elevated (harder)','Rotate your torso, not just your arms','Touch the weight to the floor beside each hip','Slow and controlled — speed makes this less effective'],
+  'Hanging Leg Raise': ['Dead hang, no swinging','Raise legs to 90 degrees or higher if you can','Control the descent — don\'t let legs swing down','Posterior pelvic tilt at the top (tuck the pelvis) for full ab contraction'],
+};
+
+
+function getFormCues(exerciseName) {
+  if (!exerciseName || typeof FORM_CUES === 'undefined') return null;
+  return FORM_CUES[exerciseName] ||
+    FORM_CUES[Object.keys(FORM_CUES).find(k=>k.toLowerCase()===exerciseName.toLowerCase())] ||
+    null;
+}
+
 function buildWMStrength(ex,ei){
   const sm={warmup:{label:'Warm-Up',color:'#D97706'},main:{label:'Main Workout',color:'#FF5C00'},cooldown:{label:'Cool Down',color:'#AAFF00'}}[ex.section||'main']||{label:'Main Workout',color:'#FF5C00'};
   const prevBest=getPrevBest(ex.name);
@@ -3546,61 +3618,6 @@ function calcPlates() {
 }
 
 // ── FORM CUES ──
-const FORM_CUES = {
-  // Chest
-  'Bench Press': ['Retract your shoulder blades and keep them pinched throughout','Bar should touch your lower chest, not your neck','Keep feet flat on the floor, slight arch in lower back','Drive the bar up and slightly back toward your face'],
-  'Incline Bench Press': ['Set bench to 30-45 degrees — higher loses chest emphasis','Retract shoulder blades hard before unracking','Bar touches upper chest, not your collar bone','Control the descent — about 2 seconds down'],
-  'Dumbbell Bench Press': ['Start with dumbbells on your knees, kick them up as you lie back','Neutral or slight outward angle at the elbow (not 90 degrees out)','Squeeze the chest at the top — imagine bending the dumbbells toward each other','Touch the dumbbells lightly at the top, don\'t let them crash'],
-  'Incline Dumbbell Bench Press': ['Bench at 30-45 degrees','Let dumbbells travel in a slight arc, not straight up','Squeeze upper chest hard at the top','Control the negative — slow down builds more muscle'],
-  'Push-Ups': ['Hands slightly wider than shoulders, fingers forward','Keep a straight line from head to heels — no sagging hips','Lower chest to within an inch of the floor','Elbows at about 45 degrees, not flared out'],
-  'Cable Fly': ['Use a weight you can control through the full arc','Slight bend in the elbows — maintain it throughout','Bring hands together in front of your chest, not above it','Squeeze the chest hard at the peak and hold briefly'],
-  'Chest Dip': ['Lean forward to target chest over triceps','Go deep — upper arms should be parallel to the floor','Come all the way up but don\'t lock elbows hard','Keep elbows tracking back, not flaring wide'],
-  // Back
-  'Deadlift': ['Bar over mid-foot, hip-width stance','Hinge at the hips, push the floor away — don\'t pull with your back','Keep bar close to your body the entire way up','Lock out hips and knees together at the top — don\'t hyperextend'],
-  'Barbell Row': ['Hinge to about 45 degrees, knees soft','Pull bar to your lower chest/upper stomach','Drive elbows back and squeeze shoulder blades together','Lower with control — don\'t let it drop'],
-  'Dumbbell Row': ['Support with opposite hand and knee on bench','Let the dumbbell hang, then row to your hip (not your armpit)','Think about pulling with your elbow, not your hand','Full stretch at the bottom — let the shoulder blade protract'],
-  'Pull-Ups': ['Start from a dead hang with shoulder blades depressed','Pull elbows down and back — think about touching your elbows to your hips','Chin over bar, then lower all the way back to dead hang','No kipping — controlled movement builds real strength'],
-  'Chin-Ups': ['Underhand grip, shoulder width','Elbows stay close to your sides throughout','Focus on squeezing your back, not just pulling with your biceps','Full range — dead hang to chin over bar'],
-  'Lat Pulldown': ['Grip slightly wider than shoulder width','Lean back slightly — maybe 10-15 degrees','Pull bar to your upper chest while squeezing lats','Control the ascent — let arms fully extend before next rep'],
-  'Seated Cable Row': ['Sit tall, slight forward lean to start, pull to upright','Drive elbows back past your torso','Squeeze shoulder blades together hard at the peak','Reach forward with control — stretch the lats'],
-  'Face Pull': ['Set cable at upper-chest to eye height','Pull to your face, elbows flared HIGH — above shoulder height','External rotate at the end — hands end up by your ears','Light weight, full control — this is a shoulder health exercise'],
-  'T-Bar Row': ['Neutral spine, hinge at the hips','Pull to your lower chest/upper abs','Squeeze the middle of your back — retract those shoulder blades','Don\'t use momentum — full control both directions'],
-  'Assisted Pull-Ups': ['Same technique as regular pull-ups — don\'t let the assistance make you lazy','Full dead hang at the bottom, chin over bar at the top','Reduce the assistance weight as you get stronger','Focus on feeling the lats — this is skill practice for unassisted pull-ups'],
-  // Legs
-  'Back Squat': ['Bar sits on traps (high bar) or rear deltoids (low bar)','Stance shoulder-width or slightly wider, toes out 15-30 degrees','Break at hips and knees simultaneously','Hit parallel or below — depth is non-negotiable for full development'],
-  'Front Squat': ['Bar rests on front deltoids, elbows up high','More upright torso than back squat — stay tall','Knees track over toes aggressively','Challenging for mobility — work on wrist and ankle flexibility'],
-  'Romanian Deadlift': ['Soft bend in knees — this is a hip hinge, not a squat','Push hips back as you lower, keeping bar close to legs','Feel a deep stretch in the hamstrings at the bottom','Drive hips forward to stand — squeeze glutes at the top'],
-  'Leg Press': ['Feet shoulder-width, positioned so knees don\'t cave in','Don\'t lock your knees at the top — keep slight tension','Don\'t let your lower back round off the pad at the bottom','Controlled descent is where the growth happens'],
-  'Leg Curl': ['Don\'t let your hips rise off the pad as you curl','Squeeze the hamstrings hard at peak contraction','Slow on the way down — 2-3 second negative','Full extension between reps'],
-  'Leg Extension': ['Sit tall, don\'t let hips lift off seat','Full extension and squeeze at the top','Slow controlled descent — don\'t let the weight pull your legs down','Point toes slightly inward to bias the VMO (inner quad)'],
-  'Bulgarian Split Squat': ['Back foot elevated on a bench, front foot far enough forward','Lower straight down — most of the weight through the front heel','Front knee tracks over toes — don\'t let it cave in','This will feel hard — it\'s one of the best leg exercises there is'],
-  'Calf Raises': ['Full range of motion — deep stretch at the bottom, all the way up on toes','Calves respond well to slow controlled reps and high volume','Pause at the top and squeeze','Don\'t bounce at the bottom — control the stretch'],
-  'Hip Thrust': ['Bar padded and across your hips, upper back on bench','Drive through your heels and squeeze your glutes hard at the top','Your shins should be roughly vertical at the top position','Don\'t hyperextend your lower back — it\'s a glute exercise'],
-  'Walking Lunges': ['Long stride so front shin stays vertical','Back knee drops close to but doesn\'t touch the floor','Torso upright — don\'t lean forward','Drive through front heel to step through'],
-  // Shoulders
-  'Overhead Press': ['Bar starts at upper chest/chin level','Press straight up — bar travels slightly back as it clears your head','Lock out overhead with biceps by ears','Core tight throughout — don\'t hyperextend your lower back'],
-  'Dumbbell Shoulder Press': ['Can be done seated or standing — standing is harder and more functional','Dumbbells start at ear height, press to neutral at top','Don\'t flare elbows too wide — slight angle forward protects the shoulder','Full lockout at the top, controlled descent'],
-  'Lateral Raise': ['Slight bend in elbow throughout','Lead with your elbows, not your hands','Stop at shoulder height — going higher shifts to traps','The weight should be light — this is an isolation exercise'],
-  'Cable Lateral Raise': ['Cable keeps tension throughout the range unlike dumbbells','Lean slightly away from the cable for better resistance curve','Stop at shoulder height, squeeze the delt','Slow and controlled — momentum defeats the purpose'],
-  'Front Raise': ['Palms facing down or neutral (thumbs up)','Raise to shoulder height only — not above','Slight bend in the elbow','Alternate arms or do both — both work fine'],
-  'Rear Delt Fly': ['Hinge forward to near parallel with the floor','Arms out to sides with slight elbow bend — like a reverse hug','Squeeze shoulder blades together and rear delts at the top','Very light weight — this muscle is often undertrained'],
-  // Arms
-  'Barbell Curl': ['Keep elbows pinned at your sides throughout','Full range — start with arms nearly straight, curl to peak contraction','No swinging — your torso shouldn\'t move','Slow negative — lower in 2-3 seconds'],
-  'Dumbbell Curl': ['Can be done alternating or together','Supinate (rotate palm up) as you curl for full bicep contraction','Don\'t swing or lean back at the top','Touch the dumbbell to your shoulder at the top'],
-  'Hammer Curl': ['Palms facing each other (neutral grip) throughout','Targets the brachialis and brachioradialis more than the bicep','Elbows stay at sides — same as regular curl','Can be done alternating or together'],
-  'Cable Curl': ['Set the cable low — this keeps tension at the top where dumbbells lose it','Keep elbows at your sides','Squeeze hard at the top of the movement','Great as a finishing exercise after barbell or dumbbell curls'],
-  'Tricep Pushdown': ['Cable set high, use rope or bar attachment','Elbows stay pinned at your sides — they should not move at all','Full extension at the bottom — lock out and squeeze','Control the weight back up — don\'t let it pull your arms up'],
-  'Skull Crushers': ['Bar comes down to your forehead (hence the name — be careful)','Elbows stay pointing at the ceiling throughout','Full extension at the top without locking elbows aggressively','Can use EZ bar, straight bar, or dumbbells'],
-  'Overhead Tricep Extension': ['One or two dumbbells held overhead','Elbows stay pointed forward — don\'t let them flare wide','Lower behind your head and fully extend back up','Great for the long head of the tricep — often undertrained'],
-  'Dips': ['Tricep dips: stay upright, elbows close to body','Chest dips: lean forward, elbows out — very different exercise','Lower until upper arms are parallel to the floor','Full lockout at the top — squeeze the triceps'],
-  'Assisted Dips': ['Same technique as regular dips — the assistance just makes it lighter','More assistance = easier, reduce it over time as you get stronger','Control the movement — don\'t let the machine bounce you','Work toward bodyweight dips as your goal'],
-  // Core
-  'Plank': ['Forearms on the ground, elbows under shoulders','Squeeze everything — glutes, abs, quads','Keep a straight line from head to heels — no sagging or piking','Breathe normally — don\'t hold your breath'],
-  'Ab Wheel': ['Start on knees — don\'t go to full standing until you\'re strong','Roll out as far as you can while keeping your lower back flat','Pull back using your abs, not your lower back','This is harder than it looks — start with a short range of motion'],
-  'Cable Crunch': ['Kneel in front of the cable, rope behind your head','Crunch DOWN — your hips don\'t move, only your spine flexes','Round your back to bring elbows toward your knees','Hold the contraction at the bottom and feel the abs'],
-  'Russian Twist': ['Feet can be on the floor (easier) or elevated (harder)','Rotate your torso, not just your arms','Touch the weight to the floor beside each hip','Slow and controlled — speed makes this less effective'],
-  'Hanging Leg Raise': ['Dead hang, no swinging','Raise legs to 90 degrees or higher if you can','Control the descent — don\'t let legs swing down','Posterior pelvic tilt at the top (tuck the pelvis) for full ab contraction'],
-};
 
 const _formCueCache = {}; // runtime cache for AI-generated cues
 
@@ -3804,9 +3821,11 @@ function getCellDots(ds) {
   assigned.forEach(a => {
     html += `<span class="cal-workout-dot cal-dot-assigned" title="Assigned by coach">📤 ${a.workout_name}</span>`;
   });
-  // Show planned workout from program if no logged workout
-  if (logs.length === 0 && assigned.length === 0 && planned) {
-    html += `<span class="cal-workout-dot cal-dot-planned">· ${planned.name}</span>`;
+  // Show planned workouts from program if no logged workout
+  if (logs.length === 0 && assigned.length === 0) {
+    getPlannedWorkouts(ds).forEach(p => {
+      html += `<span class="cal-workout-dot cal-dot-planned">· ${p.name}</span>`;
+    });
   }
   return html;
 }
