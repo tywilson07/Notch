@@ -2472,6 +2472,28 @@ async function confirmActivateProgram(id){
     console.log('Saved assignment:', saved, 'Expected start_date:', startDate);
     _activeProgStartDate = saved?.[0]?.start_date || startDate;
     console.log('_activeProgStartDate set to:', _activeProgStartDate);
+
+    // Clean up any schedule overrides that fall outside the new program window
+    const prog = (_calPrograms||[]).find(p=>p.id===id);
+    if (prog?.weeks && _activeProgStartDate) {
+      const windowStart = new Date(_activeProgStartDate+'T00:00:00').getTime();
+      const windowEnd = windowStart + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
+      try {
+        const overrides = await db('workout_schedule_overrides','GET',null,
+          `?user_id=eq.${currentUser.id}&select=id,new_date,original_date`);
+        for (const ov of (overrides||[])) {
+          const newDateMs = new Date(ov.new_date+'T00:00:00').getTime();
+          const origDateMs = new Date(ov.original_date+'T00:00:00').getTime();
+          // Delete if BOTH the original and new date are outside the program window
+          if ((origDateMs < windowStart || origDateMs >= windowEnd) &&
+              (newDateMs < windowStart || newDateMs >= windowEnd)) {
+            await db('workout_schedule_overrides','DELETE',null,`?id=eq.${ov.id}`);
+          }
+        }
+        console.log('Cleaned up out-of-window overrides');
+      } catch(e) { console.warn('Override cleanup failed:', e); }
+    }
+
     renderPrograms();
     await renderCalendar();
     toast(`Program activated from ${_activeProgStartDate} ✓`);
@@ -2530,6 +2552,24 @@ async function confirmAssignProgram(userId, progId, startDate){
         await db('program_assignments','PATCH',{active:true, ...(startDate?{start_date:startDate}:{})},`?user_id=eq.${userId}&program_id=eq.${progId}`);
       } else {
         await db('program_assignments','POST',payload);
+      }
+      // Clean up overrides outside the new program window for this athlete
+      const prog = (_calPrograms||[]).find(p=>p.id===progId);
+      if (prog?.weeks && startDate) {
+        const windowStart = new Date(startDate+'T00:00:00').getTime();
+        const windowEnd = windowStart + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
+        try {
+          const overrides = await db('workout_schedule_overrides','GET',null,
+            `?user_id=eq.${userId}&select=id,new_date,original_date`);
+          for (const ov of (overrides||[])) {
+            const newDateMs = new Date(ov.new_date+'T00:00:00').getTime();
+            const origDateMs = new Date(ov.original_date+'T00:00:00').getTime();
+            if ((origDateMs < windowStart || origDateMs >= windowEnd) &&
+                (newDateMs < windowStart || newDateMs >= windowEnd)) {
+              await db('workout_schedule_overrides','DELETE',null,`?id=eq.${ov.id}`);
+            }
+          }
+        } catch(e) { console.warn('Override cleanup failed:', e); }
       }
       toast(`Program assigned from ${startDate||'today'} ✓`);
     } else {
