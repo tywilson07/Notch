@@ -2429,7 +2429,9 @@ async function openEditProgram(id){
     const prog=rows?.[0]; if(!prog) return;
     _editProgId=id;
     const normalizeLoad = arr => (arr||[]).map(ex =>
-      typeof ex === 'string' ? {name:ex, sets:'', reps:''} : {name:ex.name||'', sets:ex.sets||'', reps:ex.reps||''}
+      typeof ex === 'string'
+        ? {name:ex, sets:'', reps:'', setType:'weight'}
+        : {name:ex.name||'', sets:ex.sets||'', reps:ex.reps||'', setType:ex.setType||'weight'}
     );
     _cpDays=(prog.schedule||[]).map(d=>({
       dow:d.dow, name:d.name,
@@ -2624,16 +2626,19 @@ function cpSyncAll() {
   _cpDays.forEach((day, i) => {
     const dayEl = document.getElementById(`cpd-${i}`);
     if (!dayEl) return;
-    // Day name + dow
+    // Day of week
     const sel = dayEl.querySelector('select');
     if (sel) day.dow = sel.value;
-    const nameInp = dayEl.querySelector('input:not(.cp-ex-name):not(.cp-ex-sets):not(.cp-ex-reps)');
+    // Day name — specifically the input in the header row
+    const nameInp = dayEl.querySelector('input[placeholder="e.g. Push Day"]') ||
+      dayEl.querySelector('.cp-day-name') ||
+      dayEl.querySelectorAll('input')[1]; // second input is the day name
     if (nameInp) day.name = nameInp.value;
     // Coach notes
     const tas = dayEl.querySelectorAll('textarea');
     if (tas[0]) day.coachNotes = tas[0].value;
-    // Exercises per section
-    ['warmup','exercises','cooldown'].forEach((section, si) => {
+    // Exercises per section — read name, sets, reps, AND setType
+    ['warmup','exercises','cooldown'].forEach((section) => {
       const containerId = `cp-${section==='exercises'?'main':section}-rows-${i}`;
       const container = document.getElementById(containerId);
       if (!container) return;
@@ -2642,10 +2647,18 @@ function cpSyncAll() {
         const nameEl = row.querySelector('.cp-ex-name');
         const setsEl = row.querySelector('.cp-ex-sets');
         const repsEl = row.querySelector('.cp-ex-reps');
+        // Find active setType button
+        const activeTypeBtn = row.querySelector('.set-type-btn.active');
+        const setType = activeTypeBtn
+          ? (activeTypeBtn.textContent.trim().toLowerCase().includes('bw') ? 'bodyweight'
+            : activeTypeBtn.textContent.trim().toLowerCase().includes('assisted') ? 'assisted'
+            : 'weight')
+          : (day[section]?.find?.(e=>e.name===nameEl?.value?.trim())?.setType || 'weight');
         return {
           name: nameEl?.value?.trim()||'',
           sets: setsEl?.value||'',
-          reps: repsEl?.value||''
+          reps: repsEl?.value||'',
+          setType
         };
       }).filter(ex => ex.name);
     });
@@ -2659,8 +2672,8 @@ async function saveCustomProgram(){
   const normalizeEx = arr => (arr||[]).filter(ex=>{
     const n=typeof ex==='string'?ex:ex.name; return n&&n.trim();
   }).map(ex=>typeof ex==='string'
-    ?{name:ex.trim(),sets:'',reps:''}
-    :{name:(ex.name||'').trim(),sets:ex.sets||'',reps:ex.reps||''});
+    ?{name:ex.trim(),sets:'',reps:'',setType:'weight'}
+    :{name:(ex.name||'').trim(),sets:ex.sets||'',reps:ex.reps||'',setType:ex.setType||'weight'});
   const schedule=_cpDays.filter(d=>d.name).map(d=>({
     dow:parseInt(d.dow), name:d.name,
     warmup:normalizeEx(d.warmup),
@@ -2669,7 +2682,7 @@ async function saveCustomProgram(){
     coachNotes:d.coachNotes||''
   }));
   const payload={
-    name, schedule, is_preset:false, created_by:currentUser.id,
+    name, schedule,
     weeks:parseInt(document.getElementById('cp-weeks')?.value)||8,
     tag:document.getElementById('cp-tag')?.value||'Custom',
     description:document.getElementById('cp-desc')?.value?.trim()||''
@@ -2677,12 +2690,17 @@ async function saveCustomProgram(){
   try{
     if(_editProgId){
       await db('programs','PATCH',payload,`?id=eq.${_editProgId}`);
-      toast('Program updated!');
+      // Clear local program cache so everyone gets fresh data on next calendar load
+      _calPrograms = [];
+      toast('Program updated! ✓');
     } else {
-      await db('programs','POST',payload);
+      await db('programs','POST',{...payload, is_preset:false, created_by:currentUser.id});
+      _calPrograms = [];
       toast('Program created!');
     }
-    _cpDays=[];_editProgId=null;closeModal();renderPrograms();
+    _cpDays=[];_editProgId=null;closeModal();
+    renderPrograms();
+    renderCalendar(); // refresh calendar so changes show immediately
   }catch(e){toast('Save failed');console.error(e);}
 }
 
