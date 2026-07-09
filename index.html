@@ -3872,11 +3872,26 @@ function renderHelp() {
           When you do the same workout again, last session's notes appear above each section as a reminder.
         </div>
       </div>
+      <div class="help-card">
+        <div class="help-card-title">👻 Ghost progression numbers</div>
         <div class="help-card-body">
-          If you left notes last time you did this exact workout, they appear in an <strong>amber hint box</strong> at the top of the log screen. A reminder from past-you to present-you. Write useful notes every session.
+          When you open a workout you've done before, the weight and reps input fields show <strong>greyed-out suggestion numbers</strong> — not just "lb" or "reps". These are your suggested progression targets:
+          <ul>
+            <li>Hit the <strong>top of your rep range</strong> last time (e.g. 12 on a 8-12 target) → ghost shows <strong>+5lb ↑</strong> and reps resets to 8</li>
+            <li>Still <strong>in the range</strong> (e.g. got 10 on 8-12) → ghost shows same weight and 10 reps as a nudge</li>
+            <li>Did <strong>10+ reps with no target</strong> → suggests +5lb automatically</li>
+          </ul>
+          Just start typing to override — the ghost disappears and your numbers take over. Nothing is auto-filled, ever.
+          <div class="help-tip"><span>💡</span><div>Ghost numbers also appear in ⚡ Workout Mode so you always know the target while you're training.</div></div>
         </div>
       </div>
       <div class="help-card">
+        <div class="help-card-title">🔢 Plate Calculator</div>
+        <div class="help-card-body">
+          Available inside ⚡ Workout Mode via the <strong>🔢 button</strong> in the footer. Enter your target weight and select your bar (45lb standard, 35lb women's, 15lb training bar). It instantly shows exactly which plates to load on each side — no mental math between sets.
+          <div class="help-tip"><span>💡</span><div>Tap Done to close the calculator and return directly to your workout.</div></div>
+        </div>
+      </div>
         <div class="help-card-title">✅ Rx'd checkbox</div>
         <div class="help-card-body">
           Mark when you completed the workout exactly as written — no scaling, no substitutions. Optional and purely informational. Shows as an orange badge in your history.
@@ -3899,13 +3914,16 @@ function renderHelp() {
         <div class="help-card-body">
           <ul>
             <li><strong>Orange progress bar</strong> — fills as you complete exercises</li>
-            <li><strong>Exercise pills</strong> — tap any pill to jump to that exercise. Warm-Up and Cool Down each appear as a single pill regardless of how many exercises they contain</li>
-            <li><strong>Swipe left</strong> to go to the next exercise, <strong>swipe right</strong> to go back — faster than tapping buttons mid-workout</li>
+            <li><strong>Exercise pills</strong> — tap any pill to jump to that exercise. Warm-Up and Cool Down each appear as a single pill</li>
+            <li><strong>Swipe left / right</strong> — swipe anywhere on the exercise to move between exercises. Faster than tapping Prev/Next mid-set.</li>
+            <li><strong>📋 Form Cues</strong> — tap the collapsible "Form Cues" line under any exercise name for 3-4 key coaching points. Built-in for all 65 preset exercises. For custom exercises, AI generates them automatically the first time you tap.</li>
             <li><strong>Warm-Up & Cool Down</strong> — one large circle button marks the whole section done at once</li>
-            <li><strong>Main Workout</strong> — large weight + reps inputs, easy to tap between sets</li>
+            <li><strong>Main Workout</strong> — large inputs with <strong>ghost progression numbers</strong> showing your suggested next weight and reps based on last session</li>
             <li><strong>Rest timer</strong> — starts automatically after every checked set, turns red under 10 seconds</li>
-            <li><strong>Prev / Next buttons</strong> at the bottom — alternative to swiping</li>
-            <li><strong>"🏆 Finish & Save"</strong> replaces Next on the last exercise — saves and shows your completion summary</li>
+            <li><strong>📝 Notes button</strong> (footer) — tap to toggle a notes panel showing your previous session notes and a field to write new ones</li>
+            <li><strong>🔢 Plate Calculator</strong> (footer) — enter a target weight, pick your bar, and see exactly which plates to load per side</li>
+            <li><strong>Prev / Next buttons</strong> — alternative to swiping</li>
+            <li><strong>"🏆 Finish & Save"</strong> replaces Next on the last exercise</li>
             <li><strong>✕ Exit</strong> — returns to the log modal with all data intact</li>
           </ul>
         </div>
@@ -4165,12 +4183,12 @@ function renderHelp() {
         <div class="help-card-body">
           <div style="display:flex;flex-direction:column;gap:0">
             <div class="help-step"><div class="help-step-num">1</div><div class="help-step-text"><strong>Goal</strong> — Strength, Cardio, Mobility, or Full Body</div></div>
-            <div class="help-step"><div class="help-step-num">2</div><div class="help-step-text"><strong>Focus</strong> — which muscle group or area (e.g. Chest, Legs, Upper Body)</div></div>
-            <div class="help-step"><div class="help-step-num">3</div><div class="help-step-text"><strong>Equipment</strong> — Full Gym, Dumbbells Only, Bodyweight Only, or Resistance Bands. The workout is filtered so only exercises matching your equipment are included.</div></div>
-            <div class="help-step"><div class="help-step-num">4</div><div class="help-step-text"><strong>Time</strong> — 20, 30, 45, or 60 minutes. Sets and exercises are scaled to fit.</div></div>
+            <div class="help-step"><div class="help-step-num">2</div><div class="help-step-text"><strong>Muscle group(s)</strong> — tap to select up to 3 muscle groups. They toggle on and off — tap Chest then tap Back to get a Back + Chest workout. The selection shows below the step title as you build it.</div></div>
+            <div class="help-step"><div class="help-step-num">3</div><div class="help-step-text"><strong>Equipment</strong> — Full Gym, Dumbbells Only, Bodyweight Only, or Bands. The workout only includes exercises matching your equipment.</div></div>
+            <div class="help-step"><div class="help-step-num">4</div><div class="help-step-text"><strong>Time</strong> — 20, 30, 45, or 60 minutes. Exercise count and sets are scaled to fit.</div></div>
           </div>
-          Tap <strong>⚡ Generate My Workout</strong> — a complete workout appears in a few seconds. Preview it, then tap <strong>📋 Log This Workout</strong> to load it straight into today's log modal.
-          <div class="help-tip"><span>💡</span><div>Tap Regenerate to get a different variation if the first result doesn't feel right. Each generation is unique.</div></div>
+          Tap <strong>⚡ Generate My Workout</strong> — a complete structured workout appears. Preview it, then tap <strong>📋 Log This Workout</strong> to load it straight into today's log.
+          <div class="help-tip"><span>💡</span><div>Tap Regenerate to get a different variation. The builder avoids repeating the same movement pattern — you won't get Bench Press + DB Bench Press in the same chest workout.</div></div>
         </div>
       </div>
       <div class="help-card">
@@ -4188,6 +4206,7 @@ function renderHelp() {
       <div class="help-card">
         <div class="help-card-body">
           <ul style="display:flex;flex-direction:column;gap:10px;list-style:none;padding:0">
+            <li>💡 <strong>Pull down to refresh.</strong> On mobile, pull down from the top of any view and release to reload the latest data — same gesture as most native apps.</li>
             <li>💡 <strong>Use the Workout Builder on unplanned training days.</strong> No program? No problem — pick your goal, equipment, and time and get a complete workout in seconds.</li>
             <li>💡 <strong>Always write notes after a workout.</strong> Even one sentence — "back was tight" or "felt strong, add 5lb." They appear as a reminder next time you do the same session.</li>
             <li>💡 <strong>Use ⚡ Workout Mode at the gym.</strong> The log modal is for setup. Workout Mode is what you use between sets — bigger inputs, rest timer, screen stays on, and you can swipe between exercises.</li>
