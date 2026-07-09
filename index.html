@@ -1125,7 +1125,8 @@ async function renderCalendar() {
     _calPrograms = progs || [];
     const activeAssign = (assigns||[]).find(a=>a.active);
     _activeProgId = activeAssign ? activeAssign.program_id : null;
-    _activeProgStartDate = activeAssign?.start_date || activeAssign?.created_at?.slice(0,10) || null;
+    // Only use start_date — never fall back to created_at (which could be wrong)
+    _activeProgStartDate = activeAssign?.start_date || null;
     // Build overrides map: originalDate → newDate
     _calOverrides = {};
     (overrides||[]).forEach(o => {
@@ -1235,9 +1236,10 @@ function getPlannedWorkouts(ds) {
   // Enforce program week limit — only show planned workouts within the program duration
   if (_activeProgStartDate && prog.weeks) {
     const startMs = new Date(_activeProgStartDate+'T00:00:00').getTime();
-    const endMs = startMs + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
+    const msPerDay = 24 * 60 * 60 * 1000;
+    // Last valid day = start + (weeks*7 - 1) days; end = start + weeks*7 days
+    const endMs = startMs + (prog.weeks * 7 * msPerDay);
     const dsMs = new Date(ds+'T00:00:00').getTime();
-    // Allow moved workouts even if slightly outside window, but not regular scheduled ones
     if (dsMs < startMs || dsMs >= endMs) {
       // Only show if a workout was explicitly moved to this date
       Object.entries(overrides).forEach(([origDate,ov])=>{
@@ -2383,7 +2385,7 @@ async function renderPrograms(){
           const progOpts=(progs||[]).map(p=>`<option value="${p.id}" ${uProg?.id===p.id?'selected':''}>${p.name}</option>`).join('');
           return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-100)">
             <div style="flex:1;font-size:13px;font-weight:600">👤 ${u.username}</div>
-            <select style="flex:2;padding:5px 8px;font-size:12.5px" onchange="assignProgramToUser('${u.id}',this.value)">
+            <select style="flex:2;padding:5px 8px;font-size:12.5px" onchange="assignProgramToUser('${u.id}',this.value,'${u.username}')">
               <option value="">— No program —</option>
               ${progOpts}
             </select>
@@ -2429,13 +2431,31 @@ async function renderPrograms(){
 }
 
 async function activateProgram(id){
-  try{
-    // Ask for start date
-    const startInput = prompt('Program start date (YYYY-MM-DD):', todayStr());
-    if (startInput === null) return; // cancelled
-    const startDate = (startInput.trim().match(/^\d{4}-\d{2}-\d{2}$/) ? startInput.trim() : todayStr());
+  // Show a proper date picker modal instead of prompt()
+  const prog = (_calPrograms||[]).find(p=>p.id===id);
+  const progName = prog?.name || 'Program';
+  return new Promise(resolve => {
+    document.getElementById('modal-title').textContent = `Activate ${progName}`;
+    document.getElementById('modal-body').innerHTML = `
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+        When does this program start? The calendar will show workouts for ${prog?.weeks||'?'} weeks from this date.
+      </div>
+      <div class="field">
+        <label>Start Date</label>
+        <input id="prog-start-date" type="date" value="${todayStr()}"
+          style="font-size:16px;padding:10px;font-family:var(--font)">
+      </div>`;
+    document.getElementById('modal-footer').innerHTML = `
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmActivateProgram('${id}')">Activate</button>`;
+    showModal();
+  });
+}
 
-    // Deactivate all, then set new active
+async function confirmActivateProgram(id){
+  const startDate = document.getElementById('prog-start-date')?.value || todayStr();
+  closeModal();
+  try{
     const existing=await db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=id`);
     for(const a of (existing||[])){
       await db('program_assignments','PATCH',{active:false},`?id=eq.${a.id}`);
@@ -2447,7 +2467,7 @@ async function activateProgram(id){
       await db('program_assignments','POST',{user_id:currentUser.id,program_id:id,active:true,start_date:startDate});
     }
     _activeProgStartDate = startDate;
-    renderPrograms(); renderCalendar(); toast('Program activated! ✓');
+    renderPrograms(); renderCalendar(); toast(`Program activated from ${startDate} ✓`);
   }catch(e){toast('Could not activate');console.error(e);}
 }
 
@@ -2459,19 +2479,53 @@ async function deactivateProgram(){
   }catch(e){toast('Error');console.error(e);}
 }
 
-async function assignProgramToUser(userId, progId){
+function assignProgramToUser(userId, progId, userName){
+  if (!progId) {
+    confirmAssignProgram(userId, '', null);
+    return;
+  }
+  const prog = (_calPrograms||[]).find(p=>p.id===progId);
+  const progName = prog?.name || 'Program';
+  const displayName = userName || 'athlete';
+  document.getElementById('modal-title').textContent = `Assign ${progName}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      Assigning <strong>${progName}</strong> to <strong>${displayName}</strong>.
+      ${prog?.weeks ? `This is a ${prog.weeks}-week program.` : ''}
+    </div>
+    <div class="field">
+      <label>Program Start Date</label>
+      <input id="assign-start-date" type="date" value="${todayStr()}"
+        style="font-size:16px;padding:10px;font-family:var(--font)">
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
+        Workouts will appear on ${displayName}'s calendar starting this date.
+      </div>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal();renderPrograms()">Cancel</button>
+    <button class="btn btn-primary" onclick="confirmAssignProgram('${userId}','${progId}',document.getElementById('assign-start-date')?.value)">Assign</button>`;
+  showModal();
+}
+
+async function confirmAssignProgram(userId, progId, startDate){
+  closeModal();
   try{
     const existing=await db('program_assignments','GET',null,`?user_id=eq.${userId}&select=id`);
     for(const a of(existing||[])){await db('program_assignments','PATCH',{active:false},`?id=eq.${a.id}`);}
     if(progId){
+      const payload = {user_id:userId, program_id:progId, active:true};
+      if (startDate) payload.start_date = startDate;
       const check=await db('program_assignments','GET',null,`?user_id=eq.${userId}&program_id=eq.${progId}&select=id`);
       if(check&&check.length){
-        await db('program_assignments','PATCH',{active:true},`?user_id=eq.${userId}&program_id=eq.${progId}`);
+        await db('program_assignments','PATCH',{active:true, ...(startDate?{start_date:startDate}:{})},`?user_id=eq.${userId}&program_id=eq.${progId}`);
       } else {
-        await db('program_assignments','POST',{user_id:userId,program_id:progId,active:true});
+        await db('program_assignments','POST',payload);
       }
-      toast('Program assigned! ✓');
-    } else { toast('Program removed from user'); }
+      toast(`Program assigned from ${startDate||'today'} ✓`);
+    } else {
+      toast('Program removed from athlete');
+    }
+    renderPrograms();
   }catch(e){toast('Assignment failed');console.error(e);}
 }
 
@@ -5271,6 +5325,7 @@ let _athCalWorkouts = {};   // athlete's logged workouts
 let _athCalAssigned = {};   // athlete's assigned workouts
 let _athCalPrograms = [];
 let _athActiveProgId = null;
+let _athProgStartDate = null;
 let _athCoachNotes = {};    // {date: noteText} pre-log coach notes for this athlete
 
 function setCalMode(mode) {
@@ -5352,6 +5407,7 @@ async function renderAthleteCalendar() {
     _athCalPrograms = progs||[];
     const activeAssign = (assigns||[]).find(a=>a.active);
     _athActiveProgId = activeAssign?.program_id||null;
+    _athProgStartDate = activeAssign?.start_date||null;
     _athCoachNotes = {};
     (coachNotes||[]).forEach(n => { _athCoachNotes[n.date] = {id:n.id, note:n.note}; });
   } catch(e) { console.error('Athlete calendar load error',e); }
@@ -5364,8 +5420,16 @@ function getAthletePlannedWorkout(ds) {
   if (!_athActiveProgId) return null;
   const prog = _athCalPrograms.find(p=>p.id===_athActiveProgId);
   if (!prog?.schedule) return null;
-  const d = new Date(ds+'T12:00:00');
-  const dow = d.getDay();
+
+  // Enforce program week limit for athlete
+  if (_athProgStartDate && prog.weeks) {
+    const startMs = new Date(_athProgStartDate+'T00:00:00').getTime();
+    const endMs = startMs + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
+    const dsMs = new Date(ds+'T00:00:00').getTime();
+    if (dsMs < startMs || dsMs >= endMs) return null;
+  }
+
+  const dow = new Date(ds+'T12:00:00').getDay();
   return prog.schedule.find(s=>parseInt(s.dow)===dow)||null;
 }
 
