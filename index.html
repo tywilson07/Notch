@@ -1322,8 +1322,10 @@ async function renderDayPanel(ds) {
       if (ex.type==='simple'||ex.section==='warmup'||ex.section==='cooldown') {
         const sectionIcon = ex.section==='warmup'?'🔥':'🧘';
         return `<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--border)">
-          <div style="font-size:11.5px;font-weight:700;color:var(--text-secondary)">${sectionIcon} ${ex.name}</div>
-          <div style="font-size:10.5px;color:${ex.done?'var(--lime)':'var(--text-muted)'}">${ex.done?'✓ Done':'—'}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+            <div style="font-size:11.5px;font-weight:700;color:var(--text-secondary)">${sectionIcon} ${ex.name}</div>
+            ${ex.done?`<div style="font-size:10.5px;color:var(--lime);font-weight:700;flex-shrink:0">✓ Done</div>`:''}
+          </div>
         </div>`;
       }
       const doneSets=(ex.sets||[]).filter(s=>s.done&&s.r);
@@ -1599,17 +1601,34 @@ function getProgressionSuggestion(name, setIdx, targetReps) {
   }
 
   // Progression logic:
-  // - Hit top of range → add 5lb, reset to lower bound
-  // - No target but did 10+ reps → add 5lb (strong signal to increase)
-  // - Otherwise → same weight, same reps as nudge
-  const hitTarget = targetUpper > 0
+  // Case 1: Hit top of rep range → increase weight, reset reps to lower bound
+  // Case 2: Within range → same weight, nudge reps upward (not just repeat same)
+  // Case 3: No target range → suggest increase after 10+ reps
+  const hitTop = targetUpper > 0
     ? prevR >= targetUpper
     : targetLower > 0
       ? prevR >= targetLower
-      : prevR >= 10; // no target — suggest increase after 10+ reps
+      : prevR >= 10;
 
-  const suggestedW = (prevW > 0 && hitTarget) ? prevW + 5 : prevW;
-  const suggestedR = hitTarget && targetLower > 0 ? targetLower : prevR;
+  let suggestedW, suggestedR;
+
+  if (hitTop) {
+    // Ready to increase weight
+    suggestedW = prevW > 0 ? prevW + 5 : prevW;
+    suggestedR = targetLower > 0 ? targetLower : prevR; // reset to bottom of range
+  } else if (targetUpper > 0 && targetLower > 0 && prevR >= targetLower) {
+    // Within range — nudge toward top (suggest 2 more reps, capped at targetUpper)
+    suggestedW = prevW;
+    suggestedR = Math.min(prevR + 2, targetUpper);
+  } else if (targetLower > 0 && prevR < targetLower) {
+    // Below range — suggest hitting the lower bound
+    suggestedW = prevW;
+    suggestedR = targetLower;
+  } else {
+    // No target — same weight, same reps
+    suggestedW = prevW;
+    suggestedR = prevR;
+  }
 
   return {
     w: suggestedW,
@@ -3552,7 +3571,7 @@ function buildWMStrength(ex,ei){
     const suggestion = (!s.w && !s.r) ? getProgressionSuggestion(ex.name, si, ex.targetReps) : null;
     const wPh = suggestion
       ? (suggestion.bw
-          ? (suggestion.w ? `+${suggestion.w}` : '0')
+          ? (suggestion.w ? `+${suggestion.w}` : 'BW')
           : suggestion.w > 0
             ? `${suggestion.w}${suggestion.isIncrease?' ↑':''}`
             : 'lb')
