@@ -1212,21 +1212,21 @@ function getPlannedWorkout(ds) {
   if (!_activeProgId) return null;
   const prog = _calPrograms.find(p=>p.id===_activeProgId);
   if (!prog) return null;
+  const overrides = _calOverrides||{};
 
-  // Check if this date was moved away (has an override pointing elsewhere)
-  const movedAway = Object.entries(_calOverrides||{}).find(([orig, ov]) => orig === ds);
-  if (movedAway) return null; // this date's workout was moved to another day
+  // If this date's workout was moved away, don't show it here
+  if (overrides[ds]) return null;
 
-  // Check if a workout was moved TO this date from another date
-  const movedHere = Object.entries(_calOverrides||{}).find(([orig, ov]) => ov.newDate === ds);
-  if (movedHere) {
-    const [origDate, ov] = movedHere;
+  // If a workout from another date was moved TO this date, show it
+  const movedHereEntry = Object.entries(overrides).find(([orig,ov])=>ov.newDate===ds);
+  if (movedHereEntry) {
+    const [origDate,ov] = movedHereEntry;
     const origDow = new Date(origDate+'T12:00:00').getDay();
-    const planned = (prog.schedule||[]).find(s=>s.dow===origDow)||null;
+    const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===origDow)||null;
     if (planned) return {...planned, movedFrom:origDate, overrideId:ov.id};
   }
 
-  // Normal: check if this day of week has a scheduled workout
+  // Normal scheduled workout for this day of week
   const dow = new Date(ds+'T12:00:00').getDay();
   return (prog.schedule||[]).find(s=>parseInt(s.dow)===dow)||null;
 }
@@ -1357,12 +1357,12 @@ async function renderDayPanel(ds) {
         <div style="font-size:12.5px;color:var(--gray-700);line-height:1.7">${items.map(fmtEx).join('')}</div>
       </div>` : '';
 
-    bodyHtml+=`<div class="workout-entry" style="border-color:var(--orange);background:var(--orange-dim);padding:0;overflow:hidden">
+    bodyHtml+=`<div class="workout-entry" onclick="openLogModal('${ds}','${planned.name}')" style="border-color:var(--orange);background:var(--orange-dim);padding:0;overflow:hidden;cursor:pointer" title="Tap to log this workout">
       <div style="padding:10px 12px 8px;border-bottom:1px solid var(--orange-mid);display:flex;align-items:center;justify-content:space-between">
         <div class="workout-entry-name" style="color:var(--orange)">${planned.name}${planned.movedFrom?` <span style="font-size:10px;font-weight:600;color:var(--text-muted)">(moved)</span>`:''}</div>
-        <button class="btn btn-xs btn-ghost" onclick="openMovePlannedWorkout('${ds}','${planned.name}','${planned.overrideId||''}')">↕ Move</button>
+        <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openMovePlannedWorkout('${ds}','${planned.name}','${planned.overrideId||''}')">↕ Move</button>
       </div>
-      <div style="padding:10px 12px">
+      <div style="padding:10px 12px" onclick="event.stopPropagation()">
         ${sectionHtml('Warm-Up','🔥','#D97706','rgba(251,191,36,.08)','rgba(251,191,36,.2)',warmup)}
         ${sectionHtml('Main Workout','💪','var(--orange)','rgba(255,92,0,.08)','rgba(255,92,0,.2)',mainExs)}
         ${sectionHtml('Cool Down','🧘','var(--lime)','rgba(170,255,0,.08)','rgba(170,255,0,.2)',cooldown)}
@@ -1372,7 +1372,7 @@ async function renderDayPanel(ds) {
           <div style="font-size:12.5px;color:var(--text-secondary)">${coachNotes}</div>
         </div>`:''}
       </div>
-      <div style="padding:0 12px 12px">
+      <div style="padding:0 12px 12px" onclick="event.stopPropagation()">
         <button class="btn btn-primary btn-sm" onclick="openLogModal('${ds}','${planned.name}')">Log This Workout</button>
       </div>
     </div>`;
@@ -2087,17 +2087,15 @@ async function openMovePlannedWorkout(fromDate, workoutName, existingOverrideId)
 async function confirmMovePlannedWorkout(fromDate, toDate, workoutName, existingOverrideId) {
   if(fromDate===toDate){closeModal();return;}
   try{
-    if(existingOverrideId){
-      // Update existing override
+    if(existingOverrideId && existingOverrideId !== ''){
       await db('workout_schedule_overrides','PATCH',{new_date:toDate},`?id=eq.${existingOverrideId}`);
     } else {
-      // Create new override
       await db('workout_schedule_overrides','POST',{
         user_id:currentUser.id,
         original_date:fromDate,
         new_date:toDate,
         workout_name:workoutName,
-        program_id:_activeProgId
+        program_id:_activeProgId||null
       });
     }
     closeModal();
@@ -3214,10 +3212,11 @@ function renderWorkoutMode() {
   _wmNavCount = navItems.length;
   if(_wmCurrentIdx>=navItems.length) _wmCurrentIdx=Math.max(0,navItems.length-1);
 
-  document.getElementById('wm-ex-nav').innerHTML=navItems.map((item,i)=>`
-    <button class="wm-ex-pill ${i===_wmCurrentIdx?'active':''} ${item.done?'done':''} ${item.isWrapUp?'':''}
-      style="${item.isWrapUp?'min-width:36px;':''}font-size:${item.isWrapUp?'16px':'inherit'}"
-      onclick="_wmCurrentIdx=${i};renderWorkoutMode()">${item.isWrapUp?'🏆':item.label}</button>`).join('');
+  document.getElementById('wm-ex-nav').innerHTML=navItems.map((item,i)=>{
+    const cls=['wm-ex-pill',i===_wmCurrentIdx?'active':'',item.done?'done':''].filter(Boolean).join(' ');
+    const st=item.isWrapUp?'min-width:40px;font-size:16px':'';
+    return `<button class="${cls}" style="${st}" onclick="_wmCurrentIdx=${i};renderWorkoutMode()">${item.isWrapUp?'🏆':item.label}</button>`;
+  }).join('');
 
   const cur=navItems[_wmCurrentIdx];
   if(!cur) return;
