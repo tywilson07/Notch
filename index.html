@@ -1157,10 +1157,25 @@ function buildWeekStrip() {
     if (logs.length > 0) {
       const anyPartial = logs.some(w => {
         const exs = w.exercises||[];
-        const done = exs.filter(ex=>(ex.sets||[]).some(s=>s.done)||ex.cardio?.done).length;
-        return done > 0 && done < exs.length;
+        const mainExs = exs.filter(ex=>ex.section==='main'||!ex.section);
+        const mainDone = mainExs.filter(ex=>
+          ex.type==='cardio'?ex.cardio?.done:
+          ex.type==='simple'?ex.done:
+          (ex.sets||[]).some(s=>s.done)
+        ).length;
+        return mainDone > 0 && mainDone < mainExs.length;
       });
-      dotClass = anyPartial ? 'partial' : 'logged';
+      const allFull = logs.every(w => {
+        const exs = w.exercises||[];
+        const mainExs = exs.filter(ex=>ex.section==='main'||!ex.section);
+        if (!mainExs.length) return true;
+        return mainExs.every(ex=>
+          ex.type==='cardio'?ex.cardio?.done:
+          ex.type==='simple'?ex.done:
+          (ex.sets||[]).some(s=>s.done)
+        );
+      });
+      dotClass = anyPartial ? 'partial' : allFull ? 'logged' : 'logged';
     } else if (assigned.length > 0) {
       dotClass = 'assigned';
     } else if (planned) {
@@ -1311,14 +1326,18 @@ async function renderDayPanel(ds) {
           <div style="font-size:10.5px;color:${ex.done?'var(--lime)':'var(--text-muted)'}">${ex.done?'✓ Done':'—'}</div>
         </div>`;
       }
-      const done=(ex.sets||[]).filter(s=>s.done&&s.r);
-      const setStr=done.map(s=>{
+      const doneSets=(ex.sets||[]).filter(s=>s.done&&s.r);
+      const allDone = doneSets.length > 0 && doneSets.length === (ex.sets||[]).length;
+      const setStr=doneSets.map(s=>{
         if(ex.setType==='bodyweight'||s.bw) return `BW${s.w?'+'+s.w+'lb':''}×${s.r}`;
         if(ex.setType==='assisted'||s.assisted) return `-${s.w}lb×${s.r}`;
         return `${s.w}lb×${s.r}`;
       }).join(' · ');
       return `<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--border)">
-        <div style="font-size:11.5px;font-weight:700;color:var(--text-secondary)">${ex.name}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text-secondary)">💪 ${ex.name}</div>
+          ${allDone?`<div style="font-size:10.5px;color:var(--lime);font-weight:700;flex-shrink:0">✓ Done</div>`:''}
+        </div>
         <div style="font-size:11.5px;font-family:var(--mono);color:var(--text-muted)">${setStr||'—'}</div>
       </div>`;
     }).join('');
