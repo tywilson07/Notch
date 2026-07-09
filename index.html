@@ -1302,6 +1302,7 @@ async function renderDayPanel(ds) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div class="workout-entry-name">${w.day_name||w.name||'Workout'}</div>
         <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-xs btn-ghost" onclick="openMoveWorkout('${w.id}','${ds}')">↕ Move</button>
           <button class="btn btn-xs btn-ghost" onclick="editLog('${ds}','${w.id}')">Edit</button>
           <button class="btn btn-xs btn-danger" onclick="deleteLog('${ds}','${w.id}')">✕</button>
         </div>
@@ -2014,6 +2015,57 @@ async function saveLog(){
       showCompletionScreen({dayName, totalSets, totalVol, totalDist, newPRs, notes});
     }
   } catch(e){toast('Save failed — try again');console.error(e);}
+}
+
+async function openMoveWorkout(workoutId, fromDate) {
+  const buildPickerMonth = (year, month) => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthLabel = new Date(year, month, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const today = todayStr();
+    let html = `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;margin-top:12px">${monthLabel}</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+      ${['S','M','T','W','T','F','S'].map(d=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--text-muted);padding:2px">${d}</div>`).join('')}
+    </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
+    for(let i=0;i<firstDay;i++) html+=`<div></div>`;
+    for(let day=1;day<=daysInMonth;day++){
+      const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const isFrom=ds===fromDate, isToday=ds===today;
+      html+=`<button onclick="confirmMoveWorkout('${workoutId}','${fromDate}','${ds}')"
+        style="padding:6px 2px;border-radius:5px;border:1.5px solid ${isFrom?'var(--orange)':'var(--border)'};
+          background:${isFrom?'var(--orange-dim)':'var(--surface2)'};
+          color:${isFrom?'var(--orange)':isToday?'var(--lime)':'var(--text-primary)'};
+          font-size:13px;font-weight:${isToday||isFrom?'800':'500'};
+          cursor:${isFrom?'default':'pointer'};font-family:var(--mono);
+          ${isFrom?'pointer-events:none':''}">
+        ${day}</button>`;
+    }
+    html+=`</div>`;
+    return html;
+  };
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const nextM=m+1>11?0:m+1, nextY=m+1>11?y+1:y;
+  document.getElementById('modal-title').textContent='↕ Move Workout';
+  document.getElementById('modal-body').innerHTML=`
+    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Tap the new date to move this workout. The highlighted date is where it currently is.
+    </div>
+    ${buildPickerMonth(y,m)}
+    ${buildPickerMonth(nextY,nextM)}`;
+  document.getElementById('modal-footer').innerHTML=`
+    <button class="btn btn-ghost btn-full" onclick="closeModal()">Cancel</button>`;
+  showModal();
+}
+
+async function confirmMoveWorkout(workoutId, fromDate, toDate) {
+  if(fromDate===toDate){closeModal();return;}
+  try{
+    await db('workouts','PATCH',{date:toDate},`?id=eq.${workoutId}&user_id=eq.${currentUser.id}`);
+    closeModal();
+    selectedDate=toDate;
+    renderCalendar();
+    toast(`Moved to ${new Date(toDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ✓`);
+  }catch(e){toast('Move failed — try again');console.error(e);}
 }
 
 async function deleteLog(ds, id){
@@ -3788,9 +3840,14 @@ function renderHelp() {
         </div>
       </div>
       <div class="help-card">
-        <div class="help-card-title">↕ Drag workouts to different days</div>
+        <div class="help-card-title">↕ Moving workouts to different days</div>
         <div class="help-card-body">
-          <strong>Tap and hold a lime or amber dot and drag it to a different day</strong> to move a logged workout. Works on desktop (mouse) and mobile (touch). Only logged workouts can be dragged — orange planned dots cannot. All notes, sets, and athlete feedback travel with the workout when you move it.
+          There are two ways to move a logged workout to a different day:
+          <br><br>
+          <strong>↕ Move button (recommended on mobile):</strong> Tap any day with a logged workout, then tap the <strong>↕ Move</strong> button on the workout entry in the day panel. A date picker appears showing this month and next — tap the new date. The current date is highlighted in orange.
+          <br><br>
+          <strong>Drag and drop (best on desktop):</strong> Tap and hold a lime or amber dot on the calendar grid and drag it to a different day.
+          <div class="help-tip"><span>💡</span><div>Only logged workouts can be moved — orange planned dots are just the program schedule. All notes, sets, feedback, and coach notes travel with the workout.</div></div>
         </div>
       </div>
       <div class="help-card">
