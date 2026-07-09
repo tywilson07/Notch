@@ -6150,11 +6150,9 @@ function loadBuilderWorkout(workout) {
     if (isSimple) return {name,type:'simple',section,done:false,expanded:false};
     const targetSets = parseInt(ex.sets)||3;
     const targetReps = ex.reps||'';
-    const repsLower = targetReps.includes('-')?targetReps.split('-')[0].trim()
-      :/^\d+$/.test(targetReps.trim())?targetReps.trim():'';
     return {name,type:'strength',section,setType:'weight',
       targetSets, targetReps,
-      sets:Array.from({length:targetSets},()=>({w:'',r:repsLower,done:false})),
+      sets:Array.from({length:targetSets},()=>({w:'',r:'',done:false})),
       expanded:false};
   };
   _logDate = todayStr();
