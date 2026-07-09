@@ -2459,7 +2459,7 @@ function buildProgramModal(prog){
       const typeBtn = (val, label, color) =>
         `<button class="set-type-btn ${setType===val?'active':''}"
           style="${setType===val?`background:${color};border-color:${color};color:#fff`:''};font-size:10px;padding:2px 6px"
-          onclick="cpExField(${dayIdx},'${section}',${ei},'setType','${val}');cpSyncAll();buildProgramModal()">${label}</button>`;
+          onclick="cpSetType(${dayIdx},'${section}',${ei},'${val}',this)">${label}</button>`;
       const typeSel = section==='exercises' ? `<div style="display:flex;gap:3px;margin-top:3px">
         ${typeBtn('weight','Weight','var(--orange)')}
         ${typeBtn('bodyweight','BW','var(--lime)')}
@@ -2589,6 +2589,23 @@ function removeCPDay(i){cpSyncAll();_cpDays.splice(i,1);buildProgramModal(null);
 function cpDayField(i,field,val){if(_cpDays[i])_cpDays[i][field]=val;}
 
 // Exercise row helpers
+function cpSetType(dayIdx, section, exIdx, val, btn) {
+  // Update data
+  cpExField(dayIdx, section, exIdx, 'setType', val);
+  // Update button styles in-place — no rebuild needed
+  const row = btn.closest('.cp-ex-row');
+  if (!row) return;
+  const colors = {weight:'var(--orange)', bodyweight:'var(--lime)', assisted:'var(--purple)'};
+  row.querySelectorAll('.set-type-btn').forEach(b => {
+    const bVal = b.getAttribute('onclick')?.match(/cpSetType\([^,]+,[^,]+,[^,]+,'([^']+)'/)?.[1];
+    const isActive = bVal === val;
+    b.classList.toggle('active', isActive);
+    b.style.background = isActive ? colors[val]||'var(--orange)' : '';
+    b.style.borderColor = isActive ? colors[val]||'var(--orange)' : '';
+    b.style.color = isActive ? '#fff' : '';
+  });
+}
+
 function cpExField(dayIdx, section, exIdx, field, val) {
   const day = _cpDays[dayIdx];
   if (!day) return;
@@ -2653,12 +2670,14 @@ function cpSyncAll() {
         const setsEl = row.querySelector('.cp-ex-sets');
         const repsEl = row.querySelector('.cp-ex-reps');
         // Find active setType button
-        const activeTypeBtn = row.querySelector('.set-type-btn.active');
-        const setType = activeTypeBtn
-          ? (activeTypeBtn.onclick?.toString().includes("'bodyweight'") || activeTypeBtn.getAttribute('onclick')?.includes("'bodyweight'") ? 'bodyweight'
-            : activeTypeBtn.onclick?.toString().includes("'assisted'") || activeTypeBtn.getAttribute('onclick')?.includes("'assisted'") ? 'assisted'
+        // setType is already kept current in _cpDays by cpSetType — just preserve it
+        const existingEx = (day[section]||[]).find(e=>e.name===nameEl?.value?.trim());
+        const activeBtn = row.querySelector('.set-type-btn.active');
+        const setType = activeBtn
+          ? (activeBtn.getAttribute('onclick')?.includes("'bodyweight'") ? 'bodyweight'
+            : activeBtn.getAttribute('onclick')?.includes("'assisted'") ? 'assisted'
             : 'weight')
-          : (day[section]?.find?.(e=>e.name===nameEl?.value?.trim())?.setType || 'weight');
+          : (existingEx?.setType || 'weight');
         return {
           name: nameEl?.value?.trim()||'',
           sets: setsEl?.value||'',
