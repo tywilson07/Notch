@@ -554,13 +554,23 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
       <button class="nav-item" onclick="nav('help',this)"><span class="icon">❓</span>How to Use</button>
     </nav>
     <div class="sidebar-footer">
-      <div id="prog-progress-label" style="font-size:11.5px;color:var(--text-secondary);margin-bottom:10px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);display:none">
+      <div id="prog-progress-label" style="font-size:11.5px;color:var(--text-secondary);margin-bottom:6px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);display:none">
         <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:3px">Current Program</div>
         <div id="prog-progress-name" style="font-weight:700;color:var(--text-primary);margin-bottom:5px;font-size:12px"></div>
         <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px">
           <div id="prog-progress-bar" style="height:100%;background:var(--orange);border-radius:2px;transition:width .3s;box-shadow:0 0 6px var(--orange)"></div>
         </div>
         <div id="prog-progress-text" style="font-size:10.5px;color:var(--text-muted)"></div>
+      </div>
+      <div id="sidebar-goal-mini" style="display:none;margin-bottom:6px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);font-size:11px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-weight:700;color:var(--text-muted);font-size:9px;text-transform:uppercase;letter-spacing:.8px">🎯 Monthly Goal</span>
+          <span id="sidebar-goal-text" style="font-weight:800;color:var(--text-primary)">0/12</span>
+          <span id="sidebar-goal-streak" style="font-weight:800;color:var(--orange);display:none"></span>
+        </div>
+        <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div id="sidebar-goal-fill" style="height:100%;background:var(--orange);border-radius:2px;transition:width .3s;width:0%"></div>
+        </div>
       </div>
       <div class="user-chip">
         <div class="user-avatar" id="sidebar-avatar"></div>
@@ -609,6 +619,21 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
               <div class="cal-dow">Sat</div>
             </div>
             <div class="cal-grid" id="cal-grid"></div>
+          </div>
+          <!-- Monthly Goal Bar -->
+          <div id="monthly-goal-bar" style="display:none;margin-top:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted)">
+                🎯 <span id="goal-month-label">July Goal</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div id="goal-count-label" style="font-size:12px;font-weight:700;color:var(--text-primary)">0/12</div>
+                <div id="goal-streak-label" style="font-size:12px;font-weight:700;color:var(--orange);display:none"></div>
+              </div>
+            </div>
+            <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div id="goal-progress-fill" style="height:100%;background:var(--orange);border-radius:3px;transition:width .4s;width:0%;box-shadow:0 0 6px var(--orange)40"></div>
+            </div>
           </div>
         </div>
         <div class="cal-side-col">
@@ -852,6 +877,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
   </div>
 </div>
 <div id="toast"></div>
+<canvas id="confetti-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:9999;display:none"></canvas>
 
 <script>
 // ═══════════════════════════════════════════════════
@@ -1118,6 +1144,7 @@ async function renderCalendar() {
   buildWeekStrip();
   renderDayPanel(selectedDate);
   updateProgProgress();
+  if (currentUser) renderMonthlyGoal(currentUser.id, currentYear, currentMonth);
 }
 
 function buildWeekStrip() {
@@ -1832,6 +1859,7 @@ function renderLogModal(existing) {
     </div>`;
   document.getElementById('modal-footer').innerHTML=`
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    ${_logId?'':`<button class="btn btn-ghost btn-sm" onclick="copyLastWorkout()" title="Copy weights/reps from last time">📋 Last</button>`}
     <button class="btn btn-white" onclick="startWorkoutMode()" title="Full-screen workout view">⚡ Start</button>
     <button class="btn btn-primary" onclick="saveLog()">Save Workout</button>`;
 
@@ -3145,6 +3173,16 @@ async function renderAthleteDetail(athlete, body) {
           <div class="athlete-stat"><div class="athlete-stat-val">${w30}</div><div class="athlete-stat-label">Last 30d</div></div>
         </div>
       </div>
+      <!-- Monthly Goal for this athlete (admin view) -->
+      <div id="athlete-goal-section-${athlete.id}" class="coach-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="coach-section-title" style="margin-bottom:0">🎯 Monthly Goal</div>
+          <button class="btn btn-xs btn-ghost" onclick="setAthleteMonthlyGoalFromDetail('${athlete.id}')">Set Goal</button>
+        </div>
+        <div id="athlete-goal-detail-${athlete.id}">
+          <div style="font-size:12px;color:var(--text-muted)">Loading...</div>
+        </div>
+      </div>
       <div class="coach-section">
         <div class="coach-section-title">Recent Workouts</div>
         ${recentHtml||'<div style="color:var(--text-muted);font-size:13px;padding:10px 0">No workouts logged yet</div>'}
@@ -3186,6 +3224,11 @@ async function renderAthleteDetail(athlete, body) {
 
     // Render cardio chart always
     renderCoachCardioChart(athlete.id, workouts||[]);
+
+    // Load and render monthly goal for this athlete
+    const goalNow = new Date();
+    const goalData = await updateMonthlyGoal(athlete.id, goalNow.getFullYear(), goalNow.getMonth());
+    renderAthleteGoalDetail(athlete.id, goalData);
 
   } catch(e) { body.innerHTML='<div class="error-msg">Could not load athlete data</div>'; console.error(e); }
 }
@@ -3241,7 +3284,7 @@ function renderCoachCardioChart(athleteId, workouts) {
   if(_coachCardioChart)_coachCardioChart.destroy();
   _coachCardioChart=new Chart(document.getElementById('coach-chart-cardio').getContext('2d'),{
     type:'line',
-    data:{labels:data.map(d=>d.date),datasets:[{data:data.map(d=>d.dist),borderColor:'#7C3AED',backgroundColor:'#EDE9FE20',tension:.3,pointBackgroundColor:'#7C3AED',pointRadius:4,fill:true}]},
+    data:{labels:data.map(d=>d.date),datasets:[{data:data.map(d=>d.dist),borderColor:'var(--orange)',backgroundColor:'rgba(255,92,0,0.1)',tension:.3,pointBackgroundColor:'var(--orange)',pointRadius:4,fill:true}]},
     options:{...CHART_OPTS}
   });
 }
@@ -4099,8 +4142,8 @@ const CHART_OPTS = {
   responsive:true, maintainAspectRatio:true,
   plugins:{legend:{display:false},tooltip:{backgroundColor:'#1F2937',titleColor:'#F9FAFB',bodyColor:'#9CA3AF',borderColor:'#374151',borderWidth:1}},
   scales:{
-    x:{grid:{color:'#F3F4F6'},ticks:{color:'#9CA3AF',font:{size:10,family:'JetBrains Mono'}}},
-    y:{grid:{color:'#F3F4F6'},ticks:{color:'#9CA3AF',font:{size:10,family:'JetBrains Mono'}}}
+    x:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'rgba(255,255,255,0.4)',font:{size:10,family:'JetBrains Mono'}}},
+    y:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'rgba(255,255,255,0.4)',font:{size:10,family:'JetBrains Mono'}}}
   }
 };
 
@@ -4149,13 +4192,13 @@ async function renderProgressCharts() {
     if(_volumeChart) _volumeChart.destroy();
     _volumeChart = new Chart(document.getElementById('chart-volume').getContext('2d'),{
       type:'bar',
-      data:{labels:dataPoints.map(d=>d.date),datasets:[{data:dataPoints.map(d=>d.vol),backgroundColor:'#BFDBFE',borderColor:'#2563EB',borderWidth:2,borderRadius:4}]},
+      data:{labels:dataPoints.map(d=>d.date),datasets:[{data:dataPoints.map(d=>d.vol),backgroundColor:'rgba(255,92,0,0.2)',borderColor:'var(--orange)',borderWidth:2,borderRadius:4}]},
       options:{...CHART_OPTS}
     });
     if(_weightChart) _weightChart.destroy();
     _weightChart = new Chart(document.getElementById('chart-weight').getContext('2d'),{
       type:'line',
-      data:{labels:dataPoints.map(d=>d.date),datasets:[{data:dataPoints.map(d=>d.maxW),borderColor:'#D97706',backgroundColor:'#FEF3C720',tension:.3,pointBackgroundColor:'#D97706',pointRadius:4,fill:true}]},
+      data:{labels:dataPoints.map(d=>d.date),datasets:[{data:dataPoints.map(d=>d.maxW),borderColor:'var(--lime)',backgroundColor:'rgba(170,255,0,0.1)',tension:.3,pointBackgroundColor:'var(--lime)',pointRadius:4,fill:true}]},
       options:{...CHART_OPTS}
     });
   } catch(e){console.error(e);}
@@ -4172,7 +4215,7 @@ function renderCardioChart(rows) {
   if(_cardioChart) _cardioChart.destroy();
   _cardioChart=new Chart(document.getElementById('chart-cardio').getContext('2d'),{
     type:'line',
-    data:{labels:data.map(d=>d.date),datasets:[{data:data.map(d=>d.dist),borderColor:'#7C3AED',backgroundColor:'#EDE9FE20',tension:.3,pointBackgroundColor:'#7C3AED',pointRadius:4,fill:true}]},
+    data:{labels:data.map(d=>d.date),datasets:[{data:data.map(d=>d.dist),borderColor:'var(--orange)',backgroundColor:'rgba(255,92,0,0.1)',tension:.3,pointBackgroundColor:'var(--orange)',pointRadius:4,fill:true}]},
     options:{...CHART_OPTS}
   });
 }
@@ -4683,6 +4726,9 @@ function showCompletionScreen({dayName, totalSets, totalVol, totalDist, newPRs, 
   document.getElementById('comp-emoji').textContent = msg.emoji;
   document.getElementById('comp-title').textContent = msg.title;
   document.getElementById('comp-sub').textContent = dayName;
+
+  // 🎉 Launch confetti!
+  setTimeout(launchConfetti, 200);
 
   // Pre-populate feedback from workout mode if already entered
   if (_selectedFeedback) {
@@ -6351,8 +6397,255 @@ function loadBuilderWorkout(workout) {
 }
 
 // ═══════════════════════════════════════════════════
-// PULL TO REFRESH
+// MONTHLY GOAL TRACKER
 // ═══════════════════════════════════════════════════
+async function updateMonthlyGoal(userId, year, month) {
+  try {
+    const yearMonth = `${year}-${String(month+1).padStart(2,'0')}`;
+    const monthStart = `${year}-${String(month+1).padStart(2,'0')}-01`;
+    const monthEnd = new Date(year, month+1, 0);
+    const monthEndStr = `${year}-${String(month+1).padStart(2,'0')}-${String(monthEnd.getDate()).padStart(2,'0')}`;
+
+    // Get user's goal
+    const userRows = await db('users','GET',null,`?id=eq.${userId}&select=monthly_goal`);
+    const goal = userRows?.[0]?.monthly_goal || 12;
+
+    // Count workouts this month
+    const workouts = await db('workouts','GET',null,
+      `?user_id=eq.${userId}&date=gte.${monthStart}&date=lte.${monthEndStr}&select=id`);
+    const count = (workouts||[]).length;
+    const pct = Math.min(100, Math.round((count/goal)*100));
+    const hit = count >= goal;
+
+    // Upsert monthly record
+    const existing = await db('monthly_goal_records','GET',null,
+      `?user_id=eq.${userId}&year_month=eq.${yearMonth}&select=id`);
+    if (existing?.length) {
+      await db('monthly_goal_records','PATCH',
+        {workouts_logged:count,goal,goal_hit:hit},
+        `?user_id=eq.${userId}&year_month=eq.${yearMonth}`);
+    } else {
+      await db('monthly_goal_records','POST',
+        {user_id:userId,year_month:yearMonth,workouts_logged:count,goal,goal_hit:hit});
+    }
+
+    // Calculate streak — consecutive months where goal was hit, ending at previous month
+    const allRecords = await db('monthly_goal_records','GET',null,
+      `?user_id=eq.${userId}&order=year_month.desc&select=year_month,goal_hit`);
+    let streak = 0;
+    // Start from most recent completed month (not current)
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    for (const rec of (allRecords||[])) {
+      const recDate = new Date(rec.year_month+'-01');
+      if (recDate > prevMonth) continue; // skip current month
+      if (rec.goal_hit) streak++;
+      else break;
+    }
+    // Also count current month if hit
+    if (hit) streak++;
+
+    return {count, goal, pct, hit, streak};
+  } catch(e) {
+    console.error('Monthly goal error:', e);
+    return null;
+  }
+}
+
+async function renderMonthlyGoal(userId, year, month) {
+  const data = await updateMonthlyGoal(userId, year, month);
+  if (!data) return;
+
+  const {count, goal, pct, hit, streak} = data;
+  const monthName = new Date(year, month, 1).toLocaleString('en-US',{month:'long'});
+
+  // Update calendar bar
+  const bar = document.getElementById('monthly-goal-bar');
+  if (bar) {
+    bar.style.display = '';
+    document.getElementById('goal-month-label').textContent = `${monthName} Goal`;
+    document.getElementById('goal-count-label').textContent = `${count}/${goal}`;
+    const fill = document.getElementById('goal-progress-fill');
+    if (fill) {
+      fill.style.width = pct+'%';
+      fill.style.background = hit ? 'var(--lime)' : 'var(--orange)';
+      fill.style.boxShadow = hit ? '0 0 6px var(--lime)' : '0 0 6px var(--orange)40';
+    }
+    const streakEl = document.getElementById('goal-streak-label');
+    if (streakEl) {
+      if (streak >= 1) {
+        streakEl.textContent = `🔥 ${streak} month${streak!==1?'s':''}`;
+        streakEl.style.display = '';
+      } else {
+        streakEl.style.display = 'none';
+      }
+    }
+  }
+
+  // Update sidebar mini
+  const mini = document.getElementById('sidebar-goal-mini');
+  if (mini) {
+    mini.style.display = '';
+    document.getElementById('sidebar-goal-text').textContent = `${count}/${goal}`;
+    document.getElementById('sidebar-goal-text').style.color = hit ? 'var(--lime)' : 'var(--text-primary)';
+    const sidebarFill = document.getElementById('sidebar-goal-fill');
+    if (sidebarFill) {
+      sidebarFill.style.width = pct+'%';
+      sidebarFill.style.background = hit ? 'var(--lime)' : 'var(--orange)';
+    }
+    const sidebarStreak = document.getElementById('sidebar-goal-streak');
+    if (sidebarStreak) {
+      if (streak >= 1) {
+        sidebarStreak.textContent = `🔥${streak}`;
+        sidebarStreak.style.display = '';
+      } else {
+        sidebarStreak.style.display = 'none';
+      }
+    }
+  }
+}
+
+// Admin: set monthly goal for an athlete
+async function setAthleteMonthlyGoal(userId, currentGoal) {
+  const goalInput = prompt(`Monthly workout goal for this athlete:`, currentGoal||12);
+  if (goalInput === null) return;
+  const newGoal = parseInt(goalInput)||12;
+  try {
+    await db('users','PATCH',{monthly_goal:newGoal},`?id=eq.${userId}`);
+    toast(`Goal updated to ${newGoal} workouts/month ✓`);
+    renderAthletes();
+  } catch(e) { toast('Update failed'); }
+}
+
+// Admin: set monthly goal from athlete detail view
+async function setAthleteMonthlyGoalFromDetail(userId) {
+  const userRows = await db('users','GET',null,`?id=eq.${userId}&select=monthly_goal,username`);
+  const current = userRows?.[0]?.monthly_goal || 12;
+  const name = userRows?.[0]?.username || 'athlete';
+  document.getElementById('modal-title').textContent = `🎯 Monthly Goal — ${name}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      How many workouts should ${name} complete per month to hit their goal?
+    </div>
+    <div class="field">
+      <label>Workouts per month</label>
+      <input id="goal-input" type="number" value="${current}" min="1" max="31"
+        style="font-size:24px;font-family:var(--mono);text-align:center;font-weight:700;padding:12px">
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">Default is 12 (3×/week). Adjust based on their program.</div>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="confirmSetAthleteGoal('${userId}')">Save Goal</button>`;
+  showModal();
+}
+
+async function confirmSetAthleteGoal(userId) {
+  const val = parseInt(document.getElementById('goal-input')?.value)||12;
+  closeModal();
+  try {
+    await db('users','PATCH',{monthly_goal:val},`?id=eq.${userId}`);
+    toast(`Goal set to ${val} workouts/month ✓`);
+    // Refresh the goal display
+    const now = new Date();
+    const data = await updateMonthlyGoal(userId, now.getFullYear(), now.getMonth());
+    if (data) renderAthleteGoalDetail(userId, data);
+  } catch(e) { toast('Update failed'); console.error(e); }
+}
+
+async function renderAthleteGoalDetail(userId, data) {
+  const container = document.getElementById(`athlete-goal-detail-${userId}`);
+  if (!container || !data) return;
+  const {count, goal, pct, hit, streak} = data;
+  const now = new Date();
+  const monthName = now.toLocaleString('en-US',{month:'long'});
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-size:12px;color:var(--text-secondary)">${monthName}: <strong style="color:${hit?'var(--lime)':'var(--text-primary)'}">${count}/${goal} workouts</strong></div>
+      ${streak>=1?`<div style="font-size:12px;font-weight:700;color:var(--orange)">🔥 ${streak} month${streak!==1?'s':''} streak</div>`:''}
+    </div>
+    <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${hit?'var(--lime)':'var(--orange)'};border-radius:3px;transition:width .4s"></div>
+    </div>
+    ${hit?`<div style="font-size:11px;color:var(--lime);font-weight:700;margin-top:4px">🎉 Goal hit!</div>`:''}`;
+}
+
+// ═══════════════════════════════════════════════════
+// COPY LAST WORKOUT
+// ═══════════════════════════════════════════════════
+async function copyLastWorkout() {
+  if (!_logExercises.length) { toast('No exercises to copy into'); return; }
+  await loadPrevCache();
+  let copied = 0;
+  _logExercises.forEach(ex => {
+    if (ex.type !== 'strength') return;
+    const sessions = _prevCache[ex.name] || [];
+    if (!sessions.length) return;
+    const prev = sessions[0];
+    (prev.sets||[]).forEach((ps, si) => {
+      if (ex.sets[si] && !ex.sets[si].w && !ex.sets[si].r && (ps.w || ps.r)) {
+        ex.sets[si].w = ps.w || '';
+        ex.sets[si].r = ps.r || '';
+        copied++;
+      }
+    });
+  });
+  if (copied === 0) {
+    toast('No previous data found to copy');
+  } else {
+    saveSectionNotes();
+    renderLogModal();
+    toast(`Copied ${copied} set${copied!==1?'s':''} from last session ✓`);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// COMPLETION CONFETTI
+// ═══════════════════════════════════════════════════
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const colors = ['#FF5C00','#AAFF00','#FFD700','#FF6B6B','#4ECDC4','#ffffff'];
+  const pieces = Array.from({length:120}, () => ({
+    x: Math.random() * canvas.width,
+    y: -10 - Math.random() * 100,
+    w: 6 + Math.random() * 8,
+    h: 10 + Math.random() * 8,
+    color: colors[Math.floor(Math.random()*colors.length)],
+    rot: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.15,
+    vx: (Math.random() - 0.5) * 4,
+    vy: 2 + Math.random() * 4,
+    alpha: 1,
+  }));
+  let frame = 0;
+  const MAX_FRAMES = 140;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.08;
+      p.rot += p.rotSpeed;
+      if (frame > MAX_FRAMES * 0.6) p.alpha -= 0.02;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.alpha);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    frame++;
+    if (frame < MAX_FRAMES) requestAnimationFrame(draw);
+    else { canvas.style.display = 'none'; ctx.clearRect(0,0,canvas.width,canvas.height); }
+  }
+  requestAnimationFrame(draw);
+}
+
+// ═══════════════════════════════════════════════════
+// PULL TO REFRESH
 (function initPullToRefresh() {
   let startY = 0, pulling = false, indicator = null;
   const THRESHOLD = 70;
