@@ -390,7 +390,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .builder-option:focus-visible{border-color:var(--orange);outline:none}
 .builder-option:active{opacity:.8}
 .builder-option.selected{background:var(--orange-dim);border-color:var(--orange);color:var(--orange)}
-.builder-option-icon{font-size:28px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;min-height:36px}
+.builder-option-icon{font-size:28px;display:block;margin-bottom:6px}
 .builder-option-label{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-primary)}
 .builder-ex-card{background:var(--surface2);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px}
 .builder-ex-name{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:2px}
@@ -6118,84 +6118,11 @@ function renderWorkoutBuilder() {
       <div class="builder-step-title">Step 3 — What equipment do you have?</div>
       <div id="builder-equipment-subtitle" style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px">Select all that apply — Full Gym includes everything</div>
       <div class="builder-option-grid">
-        <button class="builder-option" data-eq="Full Gym" style="grid-column:span 2" onclick="builderToggleEquipment('Full Gym',this)">
-          <span class="builder-option-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Squat rack uprights -->
-  <rect x="4" y="8" width="3" height="18" rx="1"/>
-  <rect x="25" y="8" width="3" height="18" rx="1"/>
-  <!-- J-hooks -->
-  <line x1="7" y1="13" x2="11" y2="13"/>
-  <line x1="21" y1="13" x2="25" y2="13"/>
-  <!-- Barbell on rack -->
-  <line x1="11" y1="13" x2="21" y2="13"/>
-  <!-- Weight plates left -->
-  <rect x="2" y="10" width="2" height="10" rx="1"/>
-  <!-- Weight plates right -->
-  <rect x="28" y="10" width="2" height="10" rx="1"/>
-  <!-- Floor -->
-  <line x1="1" y1="26" x2="31" y2="26"/>
-</svg></span><span class="builder-option-label">Full Gym</span></button>
-        <button class="builder-option" data-eq="Dumbbells" onclick="builderToggleEquipment('Dumbbells',this)">
-          <span class="builder-option-icon"><svg width="32" height="20" viewBox="0 0 32 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Handle -->
-  <line x1="10" y1="10" x2="22" y2="10"/>
-  <!-- Left collar -->
-  <line x1="10" y1="7" x2="10" y2="13"/>
-  <!-- Right collar -->  
-  <line x1="22" y1="7" x2="22" y2="13"/>
-  <!-- Left plates -->
-  <rect x="3" y="5" width="5" height="10" rx="2"/>
-  <!-- Right plates -->
-  <rect x="24" y="5" width="5" height="10" rx="2"/>
-</svg></span><span class="builder-option-label">Dumbbells</span></button>
-        <button class="builder-option" data-eq="Bodyweight" onclick="builderToggleEquipment('Bodyweight',this)">
-          <span class="builder-option-icon"><svg width="28" height="36" viewBox="0 0 28 36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Head -->
-  <circle cx="14" cy="5" r="3.5"/>
-  <!-- Body in squat position -->
-  <!-- Torso -->
-  <line x1="14" y1="8.5" x2="14" y2="18"/>
-  <!-- Arms out for balance -->
-  <line x1="14" y1="12" x2="6" y2="16"/>
-  <line x1="14" y1="12" x2="22" y2="16"/>
-  <!-- Legs in squat -->
-  <line x1="14" y1="18" x2="8" y2="28"/>
-  <line x1="14" y1="18" x2="20" y2="28"/>
-  <!-- Feet -->
-  <line x1="8" y1="28" x2="5" y2="30"/>
-  <line x1="20" y1="28" x2="23" y2="30"/>
-</svg></span><span class="builder-option-label">Bodyweight</span></button>
-        <button class="builder-option" data-eq="Resistance Bands" onclick="builderToggleEquipment('Resistance Bands',this)">
-          <span class="builder-option-icon"><svg width="32" height="28" viewBox="0 0 32 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Resistance band loop - oval shape with tension lines -->
-  <ellipse cx="16" cy="14" rx="13" ry="8"/>
-  <!-- Inner tension line -->
-  <ellipse cx="16" cy="14" rx="7" ry="4"/>
-  <!-- Anchor points -->
-  <circle cx="3" cy="14" r="1.5" fill="currentColor"/>
-  <circle cx="29" cy="14" r="1.5" fill="currentColor"/>
-  <!-- Pull handles -->
-  <line x1="29" y1="14" x2="33" y2="14" stroke-dasharray="0"/>
-</svg></span><span class="builder-option-label">Bands</span></button>
-        <button class="builder-option" data-eq="Barbell" onclick="builderToggleEquipment('Barbell',this)">
-          <span class="builder-option-icon"><svg width="36" height="20" viewBox="0 0 36 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Bar -->
-  <line x1="8" y1="10" x2="28" y2="10"/>
-  <!-- Left collar -->
-  <line x1="8" y1="6" x2="8" y2="14"/>
-  <!-- Right collar -->
-  <line x1="28" y1="6" x2="28" y2="14"/>
-  <!-- Left plates -->
-  <rect x="2" y="5" width="4" height="10" rx="1"/>
-  <!-- Right plates -->
-  <rect x="30" y="5" width="4" height="10" rx="1"/>
-  <!-- Grip knurling marks -->
-  <line x1="14" y1="8" x2="14" y2="12"/>
-  <line x1="16" y1="8" x2="16" y2="12"/>
-  <line x1="18" y1="8" x2="18" y2="12"/>
-  <line x1="20" y1="8" x2="20" y2="12"/>
-  <line x1="22" y1="8" x2="22" y2="12"/>
-</svg></span><span class="builder-option-label">Barbell</span></button>
+        <button class="builder-option" data-eq="Full Gym" style="grid-column:span 2" onclick="builderToggleEquipment('Full Gym',this)"><span class="builder-option-icon">🏋️</span><span class="builder-option-label">Full Gym</span></button>
+        <button class="builder-option" data-eq="Dumbbells" onclick="builderToggleEquipment('Dumbbells',this)"><span class="builder-option-icon">💪</span><span class="builder-option-label">Dumbbells</span></button>
+        <button class="builder-option" data-eq="Bodyweight" onclick="builderToggleEquipment('Bodyweight',this)"><span class="builder-option-icon">🤸</span><span class="builder-option-label">Bodyweight</span></button>
+        <button class="builder-option" data-eq="Resistance Bands" onclick="builderToggleEquipment('Resistance Bands',this)"><span class="builder-option-icon">〰️</span><span class="builder-option-label">Bands</span></button>
+        <button class="builder-option" data-eq="Barbell" onclick="builderToggleEquipment('Barbell',this)"><span class="builder-option-icon">🏋️‍♂️</span><span class="builder-option-label">Barbell</span></button>
       </div>
     </div>
     <div class="builder-step" id="builder-duration-step" style="display:none">
