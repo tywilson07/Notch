@@ -388,7 +388,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .builder-option-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .builder-option{padding:14px 12px;border-radius:var(--radius-sm);border:2px solid var(--border-strong);background:var(--surface2);cursor:pointer;font-family:var(--font);text-align:center;transition:all .12s}
 .builder-option:hover{border-color:var(--orange);background:var(--orange-dim)}
-.builder-option.selected{background:var(--orange-dim);border-color:var(--orange)}
+.builder-option.selected{background:var(--orange-dim);border-color:var(--orange);color:var(--orange)}
 .builder-option-icon{font-size:28px;display:block;margin-bottom:6px}
 .builder-option-label{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-primary)}
 .builder-ex-card{background:var(--surface2);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px}
@@ -6088,11 +6088,11 @@ function doSwapExercise(ei, newName) {
 // ═══════════════════════════════════════════════════
 // WORKOUT BUILDER
 // ═══════════════════════════════════════════════════
-let _builderState = {goal:null, focus:[], equipment:null, duration:null};
+let _builderState = {goal:null, focus:[], equipment:[], duration:null};
 
 function renderWorkoutBuilder() {
   const body = document.getElementById('builder-body');
-  _builderState = {goal:null, focus:[], equipment:null, duration:null};
+  _builderState = {goal:null, focus:[], equipment:[], duration:null};
   body.innerHTML = `
     <div style="margin-bottom:16px">
       <div style="font-size:15px;font-weight:900;color:var(--text-primary);margin-bottom:4px">Build a Workout</div>
@@ -6115,11 +6115,13 @@ function renderWorkoutBuilder() {
     </div>
     <div class="builder-step" id="builder-equipment-step" style="display:none">
       <div class="builder-step-title">Step 3 — What equipment do you have?</div>
+      <div id="builder-equipment-subtitle" style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px">Select all that apply — Full Gym includes everything</div>
       <div class="builder-option-grid">
-        <button class="builder-option" onclick="builderSetEquipment('Full Gym',this)"><span class="builder-option-icon">🏋️</span><span class="builder-option-label">Full Gym</span></button>
-        <button class="builder-option" onclick="builderSetEquipment('Dumbbells Only',this)"><span class="builder-option-icon">🏃</span><span class="builder-option-label">Dumbbells Only</span></button>
-        <button class="builder-option" onclick="builderSetEquipment('Bodyweight Only',this)"><span class="builder-option-icon">🤸</span><span class="builder-option-label">Bodyweight Only</span></button>
-        <button class="builder-option" onclick="builderSetEquipment('Resistance Bands',this)"><span class="builder-option-icon">〰️</span><span class="builder-option-label">Bands</span></button>
+        <button class="builder-option" data-eq="Full Gym" style="grid-column:span 2" onclick="builderToggleEquipment('Full Gym',this)"><span class="builder-option-icon">🏋️</span><span class="builder-option-label">Full Gym</span></button>
+        <button class="builder-option" data-eq="Dumbbells" onclick="builderToggleEquipment('Dumbbells',this)"><span class="builder-option-icon">💪</span><span class="builder-option-label">Dumbbells</span></button>
+        <button class="builder-option" data-eq="Bodyweight" onclick="builderToggleEquipment('Bodyweight',this)"><span class="builder-option-icon">🤸</span><span class="builder-option-label">Bodyweight</span></button>
+        <button class="builder-option" data-eq="Resistance Bands" onclick="builderToggleEquipment('Resistance Bands',this)"><span class="builder-option-icon">〰️</span><span class="builder-option-label">Bands</span></button>
+        <button class="builder-option" data-eq="Barbell" onclick="builderToggleEquipment('Barbell',this)"><span class="builder-option-icon">🔩</span><span class="builder-option-label">Barbell</span></button>
       </div>
     </div>
     <div class="builder-step" id="builder-duration-step" style="display:none">
@@ -6184,14 +6186,14 @@ function builderToggleFocus(val, btn) {
     if (_builderState.focus.length >= 3) { toast('Max 3 muscle groups'); return; }
     _builderState.focus.push(val);
   }
-  // Re-render ALL focus buttons from state — don't rely on btn reference (unreliable on mobile)
+  // Re-render ALL focus buttons from state — pure class toggling, no inline styles
   document.querySelectorAll('#builder-focus-options .builder-option').forEach(b => {
-    const bVal = b.dataset.val;
-    const isSelected = _builderState.focus.includes(bVal);
+    const isSelected = _builderState.focus.includes(b.dataset.val);
     b.classList.toggle('selected', isSelected);
-    b.style.background = isSelected ? 'var(--orange-dim)' : '';
-    b.style.borderColor = isSelected ? 'var(--orange)' : '';
-    b.style.color = isSelected ? 'var(--orange)' : '';
+    // Clear any lingering inline styles that might override the CSS class
+    b.style.background = '';
+    b.style.borderColor = '';
+    b.style.color = '';
   });
   const sub = document.getElementById('builder-focus-subtitle');
   if (sub) sub.textContent = _builderState.focus.length
@@ -6206,19 +6208,49 @@ function builderToggleFocus(val, btn) {
 }
 
 
-function builderSetEquipment(val, btn) {
-  _builderState.equipment = val;
-  document.querySelectorAll('#builder-equipment-step .builder-option').forEach(b=>b.classList.remove('selected'));
-  btn.classList.add('selected');
-  document.getElementById('builder-duration-step').style.display='';
-  document.getElementById('builder-generate-area').style.display='none';
+function builderToggleEquipment(val, btn) {
+  if (!Array.isArray(_builderState.equipment)) _builderState.equipment = [];
+  if (val === 'Full Gym') {
+    // Full Gym = exclusive single select
+    _builderState.equipment = ['Full Gym'];
+  } else {
+    // Remove Full Gym if selecting specific equipment
+    _builderState.equipment = _builderState.equipment.filter(e => e !== 'Full Gym');
+    const idx = _builderState.equipment.indexOf(val);
+    if (idx > -1) {
+      _builderState.equipment.splice(idx, 1);
+    } else {
+      _builderState.equipment.push(val);
+    }
+  }
+  // Re-render all equipment buttons from state
+  document.querySelectorAll('#builder-equipment-step .builder-option').forEach(b => {
+    const isSelected = _builderState.equipment.includes(b.dataset.eq);
+    b.classList.toggle('selected', isSelected);
+    b.style.background = '';
+    b.style.borderColor = '';
+    b.style.color = '';
+  });
+  // Update subtitle
+  const sub = document.getElementById('builder-equipment-subtitle');
+  if (sub) sub.textContent = _builderState.equipment.length
+    ? `Selected: ${_builderState.equipment.join(' + ')}`
+    : 'Select all that apply — Full Gym includes everything';
+  // Show duration if something selected
+  if (_builderState.equipment.length > 0) {
+    document.getElementById('builder-duration-step').style.display = '';
+    document.getElementById('builder-generate-area').style.display = 'none';
+  } else {
+    document.getElementById('builder-duration-step').style.display = 'none';
+    document.getElementById('builder-generate-area').style.display = 'none';
+  }
 }
 
 function builderSetDuration(val, btn) {
   _builderState.duration = val;
   document.querySelectorAll('#builder-duration-step .builder-option').forEach(b=>b.classList.remove('selected'));
   btn.classList.add('selected');
-  if (_builderState.focus.length > 0) {
+  if (_builderState.focus.length > 0 && _builderState.equipment?.length > 0) {
     document.getElementById('builder-generate-area').style.display='';
   }
 }
@@ -6227,9 +6259,10 @@ function builderSetDuration(val, btn) {
 
 async function generateWorkout() {
   const {goal, focus, equipment, duration} = _builderState;
-  if (!goal||!focus.length||!equipment||!duration) { toast('Complete all steps first'); return; }
+  if (!goal||!focus.length||!equipment?.length||!duration) { toast('Complete all steps first'); return; }
 
   const focusLabel = focus.join(' + ');
+  const equipmentLabel = Array.isArray(equipment) ? equipment.join(' + ') : equipment;
   const result = document.getElementById('builder-result');
   result.innerHTML = `<div class="builder-step" style="text-align:center;padding:32px 16px">
     <div style="font-size:32px;margin-bottom:12px">⚡</div>
@@ -6245,7 +6278,7 @@ async function generateWorkout() {
 
   try {
     const raw = await callAI('generate_workout', {
-      goal, focus: focusLabel, equipment, duration,
+      goal, focus: focusLabel, equipment: equipmentLabel, duration,
       libraryExercises: libNames
     });
     const workout = JSON.parse(raw);
@@ -6266,13 +6299,18 @@ function generateWorkoutLocal() {
   const focusLabel = focusArr.join(' + ');
   const mins = parseInt(duration)||45;
 
+  // Build allowed equipment list from selection (equipment is now an array)
+  const eqTypes = Array.isArray(equipment) ? equipment : [equipment];
   const eqMap = {
-    'Full Gym':        ['Barbell','Dumbbell','Cable','Machine','Bodyweight','Any'],
-    'Dumbbells Only':  ['Dumbbell','Bodyweight','Any'],
-    'Bodyweight Only': ['Bodyweight','Any'],
-    'Resistance Bands':['Band','Bodyweight','Any']
+    'Full Gym':         ['Barbell','Dumbbell','Cable','Machine','Bodyweight','Band','Any'],
+    'Dumbbells':        ['Dumbbell','Bodyweight','Any'],
+    'Bodyweight':       ['Bodyweight','Any'],
+    'Resistance Bands': ['Band','Bodyweight','Any'],
+    'Barbell':          ['Barbell','Bodyweight','Any'],
   };
-  const allowedEq = eqMap[equipment]||eqMap['Full Gym'];
+  const allowedEq = eqTypes.includes('Full Gym')
+    ? eqMap['Full Gym']
+    : [...new Set(eqTypes.flatMap(e => eqMap[e]||['Bodyweight','Any']))];
 
   // Movement patterns enforce variety — one exercise per pattern per muscle group
   const PATTERNS = {
