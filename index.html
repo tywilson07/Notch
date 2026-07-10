@@ -1431,6 +1431,7 @@ async function renderDayPanel(ds) {
       <div style="padding:10px 12px 8px;border-bottom:1px solid var(--orange-mid);display:flex;align-items:center;justify-content:space-between">
         <div class="workout-entry-name" style="color:var(--orange)">${planned.name}${planned.movedFrom?` <span style="font-size:10px;font-weight:600;color:var(--text-muted)">(moved)</span>`:''}</div>
         <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openMovePlannedWorkout('${ds}','${planned.name}','${planned.overrideId||''}')">↕ Move</button>
+        <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openCopyPlannedWorkout('${ds}','${planned.name}')">📋 Copy</button>
       </div>
       <div style="padding:10px 12px">
         ${sectionHtml('Warm-Up','🔥','#D97706','rgba(251,191,36,.08)','rgba(251,191,36,.2)',warmup)}
@@ -2239,6 +2240,94 @@ async function cancelPlannedMove(overrideId, originalDate) {
     await renderCalendar();
     toast('Workout returned to original day');
   }catch(e){toast('Failed — try again');}
+}
+
+async function openCopyPlannedWorkout(fromDate, workoutName) {
+  const buildPickerMonth = (year, month) => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const monthLabel = new Date(year, month, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const today = todayStr();
+    let html = `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;margin-top:12px">${monthLabel}</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+      ${['S','M','T','W','T','F','S'].map(d=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--text-muted);padding:2px">${d}</div>`).join('')}
+    </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
+    for(let i=0;i<firstDay;i++) html+=`<div></div>`;
+    for(let day=1;day<=daysInMonth;day++){
+      const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const isPast = ds < today;
+      const isFrom = ds === fromDate;
+      const isToday = ds === today;
+      html+=`<button onclick="confirmCopyPlannedWorkout('${fromDate}','${ds}','${workoutName}')"
+        ${isPast?'disabled':''}
+        style="padding:6px 2px;border-radius:5px;border:1.5px solid ${isFrom?'var(--orange)':'var(--border)'};
+          background:${isFrom?'var(--orange-dim)':isPast?'none':'var(--surface2)'};
+          color:${isPast?'var(--border)':isToday?'var(--lime)':isFrom?'var(--orange)':'var(--text-primary)'};
+          font-size:13px;font-weight:${isToday||isFrom?'800':'500'};
+          cursor:${isPast?'default':'pointer'};font-family:var(--mono);
+          opacity:${isPast?'.3':'1'}">
+        ${day}</button>`;
+    }
+    html+=`</div>`;
+    return html;
+  };
+
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const nextM=m+1>11?0:m+1, nextY=m+1>11?y+1:y;
+
+  document.getElementById('modal-title').textContent = `📋 Copy "${workoutName}"`;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Pick a date to copy this planned workout to. A blank workout entry will be created there with the same exercises ready to log.
+    </div>
+    ${buildPickerMonth(y,m)}
+    ${buildPickerMonth(nextY,nextM)}`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost btn-full" onclick="closeModal()">Cancel</button>`;
+  showModal();
+}
+
+async function confirmCopyPlannedWorkout(fromDate, toDate, workoutName) {
+  // Get the planned workout template from the program
+  const planned = getPlannedWorkout(fromDate);
+  if (!planned) { toast('Could not find workout template'); return; }
+
+  // Convert program exercises to blank log format
+  const toEx = (ex, section) => {
+    const name = typeof ex === 'string' ? ex : (ex.name||'');
+    const isSimple = section === 'warmup' || section === 'cooldown';
+    const isCardio = /run|row|bike|cardio|swim|walk/i.test(name);
+    if (isCardio) return {name, type:'cardio', section, cardio:{dist:'',pace:'',dur:'',done:false}, expanded:false};
+    if (isSimple) return {name, type:'simple', section, done:false, expanded:false};
+    const sets = typeof ex === 'object' ? parseInt(ex.sets)||3 : 3;
+    const reps = typeof ex === 'object' ? (ex.reps||'') : '';
+    const setType = typeof ex === 'object' ? (ex.setType||'weight') : 'weight';
+    return {name, type:'strength', section, setType, targetSets:sets, targetReps:reps,
+      sets: Array.from({length:sets}, ()=>({w:'',r:'',done:false})), expanded:false};
+  };
+
+  const exercises = [
+    ...(planned.warmup||[]).map(ex=>toEx(ex,'warmup')),
+    ...(planned.exercises||[]).map(ex=>toEx(ex,'main')),
+    ...(planned.cooldown||[]).map(ex=>toEx(ex,'cooldown')),
+  ];
+
+  try {
+    await db('workouts','POST',{
+      user_id: currentUser.id,
+      date: toDate,
+      day_name: workoutName,
+      exercises,
+      notes:'', warmup_notes:'', main_notes:'', cooldown_notes:'', result:''
+    });
+    closeModal();
+    selectedDate = toDate;
+    await renderCalendar();
+    toast(`Copied to ${new Date(toDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ✓`);
+  } catch(e) {
+    toast('Copy failed — try again');
+    console.error(e);
+  }
 }
 
 async function openCopyWorkout(workoutId, fromDate) {
