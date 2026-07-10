@@ -258,11 +258,6 @@ label{font-size:11px;font-weight:800;color:var(--text-muted);display:block;margi
 .hist-filter.active{background:var(--blue-light);color:var(--blue)}
 
 /* ── REST TIMER ── */
-#rest-timer{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text-primary);border:1px solid var(--orange-mid);border-radius:var(--radius-lg);padding:12px 20px;z-index:300;display:none;align-items:center;gap:12px;box-shadow:var(--shadow-orange);white-space:nowrap}
-#rest-timer.show{display:flex}
-#timer-display{font-family:var(--mono);font-size:22px;font-weight:900;color:var(--orange);min-width:52px;text-align:center}
-.timer-label{font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.5px;text-transform:uppercase}
-#timer-skip{background:rgba(255,255,255,.12);border:none;border-radius:6px;color:#fff;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer}
 
 /* ── RPE / BODYWEIGHT ── */
 
@@ -366,8 +361,6 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .wm-check-btn{width:46px;height:46px;border-radius:50%;border:2px solid var(--border-strong);background:none;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex-shrink:0;transition:all .15s;margin-left:auto;color:var(--text-muted)}
 .wm-check-btn.done{background:var(--lime);border-color:var(--lime);color:#0D0D0F;font-weight:900}
 .wm-footer{background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:8px;flex-shrink:0}
-.wm-timer-display{font-family:var(--mono);font-size:32px;font-weight:900;color:var(--orange);text-align:center;padding:10px;background:var(--orange-dim);border-radius:var(--radius);margin-bottom:12px;transition:color .3s;border:1px solid var(--orange-mid);letter-spacing:-1px}
-.wm-timer-display.urgent{color:var(--red);background:var(--red-light);border-color:var(--red)40}
 
 /* ── ATHLETE PROGRESS CHARTS ── */
 .coach-chart-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px}
@@ -801,11 +794,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
   <!-- Exercise nav pills -->
   <div class="wm-exercise-nav" id="wm-ex-nav"></div>
   <!-- Timer (hidden when not running) -->
-  <div id="wm-timer-wrap" style="padding:0 16px;display:none">
-    <div class="wm-timer-display" id="wm-timer-display">1:30</div>
-    <button class="btn btn-ghost btn-full btn-sm" onclick="stopTimer();document.getElementById('wm-timer-wrap').style.display='none'" style="margin-bottom:12px">Skip rest</button>
-  </div>
-  <!-- Current exercise body -->
+<!-- Current exercise body -->
   <div class="wm-body" id="wm-body"></div>
   <!-- Notes panel (collapsible) -->
   <div id="wm-notes-panel" style="display:block;padding:8px 16px;background:var(--surface);border-top:1px solid var(--border)">
@@ -849,15 +838,6 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
     <button class="btn btn-primary btn-full" onclick="saveCompletionFeedback()" style="margin-bottom:8px">Done</button>
     <button class="btn btn-ghost btn-full" onclick="saveCompletionFeedback();setTimeout(()=>nav('history'),300)">View History</button>
   </div>
-</div>
-
-<!-- REST TIMER -->
-<div id="rest-timer">
-  <div>
-    <div class="timer-label">Rest</div>
-    <div id="timer-display">1:30</div>
-  </div>
-  <button id="timer-skip" onclick="stopTimer()">Skip ›</button>
 </div>
 
 <!-- MODAL -->
@@ -1332,58 +1312,69 @@ async function renderDayPanel(ds) {
   });
 
   logs.forEach(w => {
-    const exList = (w.exercises||[]).map(ex => {
-      if (ex.type==='cardio'&&ex.cardio) {
-        const parts=[ex.cardio.dist?ex.cardio.dist+'mi':'',ex.cardio.pace?ex.cardio.pace+'/mi':'',ex.cardio.dur?ex.cardio.dur+'min':''].filter(Boolean);
-        return `<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--border)">
-          <div style="font-size:11.5px;font-weight:700;color:var(--text-secondary)">🏃 ${ex.name}</div>
-          <div style="font-size:11.5px;font-family:var(--mono);color:var(--text-muted)">${parts.join(' · ')||'—'}</div>
+    // Split exercises by section
+    const warmupExs  = (w.exercises||[]).filter(ex=>ex.section==='warmup');
+    const mainExs    = (w.exercises||[]).filter(ex=>ex.section==='main'||!ex.section);
+    const cooldownExs= (w.exercises||[]).filter(ex=>ex.section==='cooldown');
+
+    const fmtLoggedEx = ex => {
+      if (ex.type==='simple') {
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0">
+          <div style="font-size:12px;color:var(--text-secondary)">${ex.name}</div>
+          ${ex.done?`<div style="font-size:10.5px;color:var(--lime);font-weight:700">✓ Done</div>`:''}
         </div>`;
       }
-      // Simple exercises (warmup/cooldown) — just show done status, no sets
-      if (ex.type==='simple'||ex.section==='warmup'||ex.section==='cooldown') {
-        const sectionIcon = ex.section==='warmup'?'🔥':'🧘';
-        return `<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--border)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-            <div style="font-size:11.5px;font-weight:700;color:var(--text-secondary)">${sectionIcon} ${ex.name}</div>
-            ${ex.done?`<div style="font-size:10.5px;color:var(--lime);font-weight:700;flex-shrink:0">✓ Done</div>`:''}
-          </div>
+      if (ex.type==='cardio') {
+        const c = ex.cardio||{};
+        const info = [c.dist?`${c.dist}mi`:'', c.dur?c.dur:'', c.pace?`@${c.pace}`:''].filter(Boolean).join(' · ');
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0">
+          <div style="font-size:12px;color:var(--text-secondary)">${ex.name}</div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted)">${info||'—'}</div>
         </div>`;
       }
-      const doneSets=(ex.sets||[]).filter(s=>s.done&&s.r);
+      const doneSets = (ex.sets||[]).filter(s=>s.done&&s.r);
       const allDone = doneSets.length > 0 && doneSets.length === (ex.sets||[]).length;
-      const setStr=doneSets.map(s=>{
+      const setStr = doneSets.map(s=>{
         if(ex.setType==='bodyweight'||s.bw) return `BW${s.w?'+'+s.w+'lb':''}×${s.r}`;
         if(ex.setType==='assisted'||s.assisted) return `-${s.w}lb×${s.r}`;
         return `${s.w}lb×${s.r}`;
       }).join(' · ');
-      return `<div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--border)">
+      return `<div style="padding:3px 0">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-          <div style="font-size:11.5px;font-weight:700;color:var(--text-secondary)">💪 ${ex.name}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text-secondary)">${ex.name}</div>
           ${allDone?`<div style="font-size:10.5px;color:var(--lime);font-weight:700;flex-shrink:0">✓ Done</div>`:''}
         </div>
-        <div style="font-size:11.5px;font-family:var(--mono);color:var(--text-muted)">${setStr||'—'}</div>
+        <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted)">${setStr||'—'}</div>
       </div>`;
-    }).join('');
-    // Per-section notes
-    const sectionNoteHtml = [
-      w.warmup_notes   ? `<div style="margin-top:5px;font-size:11.5px;color:#FFB800">🔥 ${w.warmup_notes}</div>` : '',
-      w.main_notes     ? `<div style="margin-top:4px;font-size:11.5px;color:var(--orange)">💪 ${w.main_notes}</div>` : '',
-      w.cooldown_notes ? `<div style="margin-top:4px;font-size:11.5px;color:var(--lime)">🧘 ${w.cooldown_notes}</div>` : '',
-    ].join('');
-    bodyHtml += `<div class="workout-entry">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-        <div class="workout-entry-name">${w.day_name||w.name||'Workout'}</div>
+    };
+
+    const loggedSection = (label, emoji, color, bg, border, items, note) => {
+      if (!items.length && !note) return '';
+      return `<div style="background:${bg};border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid ${border}">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:${color};margin-bottom:6px">${emoji} ${label}</div>
+        ${items.map(fmtLoggedEx).join('')}
+        ${note?`<div style="font-size:11.5px;color:${color};margin-top:6px;opacity:.85;font-style:italic">📝 ${note}</div>`:''}
+      </div>`;
+    };
+
+    bodyHtml += `<div class="workout-entry" style="padding:0;overflow:hidden">
+      <div style="padding:10px 12px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="workout-entry-name">${w.day_name||w.name||'Workout'}</div>
+        </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
           <button class="btn btn-xs btn-ghost" onclick="openMoveWorkout('${w.id}','${ds}')">↕ Move</button>
           <button class="btn btn-xs btn-ghost" onclick="editLog('${ds}','${w.id}')">Edit</button>
           <button class="btn btn-xs btn-danger" onclick="deleteLog('${ds}','${w.id}')">✕</button>
         </div>
       </div>
-      ${w.rx?'<span class="pill pill-blue" style="margin-bottom:5px;display:inline-block">Rx\'d</span>':''}
-      ${w.exercises?.length?exList:(w.result?`<div class="logged-result">✓ ${w.result}</div>`:'')}
-      ${sectionNoteHtml}
-      ${w.notes?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:5px;font-style:italic">${w.notes}</div>`:''}
+      <div style="padding:10px 12px">
+        ${loggedSection('Warm-Up','🔥','#D97706','rgba(251,191,36,.08)','rgba(251,191,36,.2)',warmupExs,w.warmup_notes)}
+        ${loggedSection('Main Workout','💪','var(--orange)','rgba(255,92,0,.08)','rgba(255,92,0,.2)',mainExs,w.main_notes)}
+        ${loggedSection('Cool Down','🧘','var(--lime)','rgba(170,255,0,.08)','rgba(170,255,0,.2)',cooldownExs,w.cooldown_notes)}
+        ${!warmupExs.length&&!mainExs.length&&!cooldownExs.length&&w.result?`<div class="logged-result">✓ ${w.result}</div>`:''}
+        ${w.notes?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;padding:8px 10px;background:var(--surface3);border-radius:6px;font-style:italic">📋 ${w.notes}</div>`:''}
+      </div>
     </div>`;
   });
 
@@ -1830,19 +1821,9 @@ function renderLogModal(existing) {
     <div class="divider"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
-        <input type="checkbox" id="log-rx" ${existing?.rx?'checked':''} style="width:15px;height:15px">
-        <span style="font-size:13px;font-weight:600;color:var(--gray-700)">Rx'd</span>
       </label>
       <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-500)">
-        <span>Rest timer:</span>
-        <select id="rest-dur" style="padding:3px 6px;font-size:12px;width:auto">
-          <option value="60">1:00</option>
-          <option value="90" selected>1:30</option>
-          <option value="120">2:00</option>
-          <option value="180">3:00</option>
-          <option value="0">Off</option>
-        </select>
-      </div>
+        <span>
     </div>
     <div class="field">
       <label>Notes</label>
@@ -2049,7 +2030,6 @@ function toggleSet(ei,si){
     // Start rest timer when a set is checked as done
     if (_logExercises[ei].sets[si].done) {
       const dur = parseInt(document.getElementById('rest-dur')?.value||'90');
-      if (dur > 0) startTimer(dur);
     }
   }
   if(block) block.outerHTML=buildExBlock(_logExercises[ei],ei);
@@ -2101,7 +2081,6 @@ async function saveLog(){
       ['dist','pace','dur'].forEach(f=>{const inp=document.querySelector(`#ex-block-${ei} input[oninput*="'${f}'"]`);if(inp&&ex.cardio)ex.cardio[f]=inp.value;});
     }
   });
-  const rx=document.getElementById('log-rx')?.checked||false;
   const notes=document.getElementById('log-notes')?.value?.trim()||'';
   const warmup_notes=document.getElementById('log-warmup-notes')?.value?.trim()||'';
   const main_notes=document.getElementById('log-main-notes')?.value?.trim()||'';
@@ -2138,7 +2117,7 @@ async function saveLog(){
       sets:ex.type==='strength'?(ex.sets||[]).filter(s=>s.w||s.r).map(s=>({...s})):null,
       cardio:ex.type==='cardio'?{...ex.cardio}:null,
       done:ex.type==='simple'?ex.done:undefined
-    })),rx,notes,warmup_notes,main_notes,cooldown_notes,result};
+    })),notes,warmup_notes,main_notes,cooldown_notes,result};
   try {
     if(_logId){
       await db('workouts','PATCH',payload,`?id=eq.${_logId}&user_id=eq.${currentUser.id}`);
@@ -3432,8 +3411,6 @@ function startWorkoutMode() {
 function exitWorkoutMode() {
   document.getElementById('workout-mode').classList.remove('show');
   releaseWakeLock();
-  stopTimer();
-  document.getElementById('wm-timer-wrap').style.display='none';
   const planned=getPlannedWorkout(_logDate);
   document.getElementById('modal-title').textContent=planned?planned.name:'Log Workout';
   renderLogModal();
@@ -3767,7 +3744,7 @@ function wmToggleSet(ei,si){
   if(row){const inps=row.querySelectorAll('.wm-input');if(inps[0])_logExercises[ei].sets[si].w=inps[0].value;if(inps[1])_logExercises[ei].sets[si].r=inps[1].value;}
   const s=_logExercises[ei]?.sets?.[si]; if(!s) return;
   s.done=!s.done;
-  if(s.done){startTimer(90);const tw=document.getElementById('wm-timer-wrap');if(tw)tw.style.display='block';}
+  
   renderWorkoutMode();
 }
 function wmAddSet(ei){
@@ -3939,58 +3916,6 @@ async function loadWMCues(detailsEl, exerciseName) {
 
 // REST TIMER
 // ═══════════════════════════════════════════════════
-let _timerInterval = null;
-let _timerSecondsLeft = 0;
-
-function startTimer(seconds) {
-  stopTimer();
-  _timerSecondsLeft = seconds;
-  const el = document.getElementById('rest-timer');
-  const display = document.getElementById('timer-display');
-  el.classList.add('show');
-  updateTimerDisplay();
-  _timerInterval = setInterval(()=>{
-    _timerSecondsLeft--;
-    updateTimerDisplay();
-    if (_timerSecondsLeft <= 0) {
-      stopTimer();
-      // Vibrate on mobile if supported
-      if (navigator.vibrate) navigator.vibrate([200,100,200]);
-      toast('Rest done — next set! 💪');
-    }
-  }, 1000);
-}
-
-function stopTimer() {
-  clearInterval(_timerInterval);
-  _timerInterval = null;
-  const el = document.getElementById('rest-timer');
-  if (el) el.classList.remove('show');
-  // Also hide the in-workout mode timer
-  const wt = document.getElementById('wm-timer-wrap');
-  if (wt) wt.style.display = 'none';
-}
-
-function updateTimerDisplay() {
-  const m = Math.floor(Math.max(0,_timerSecondsLeft) / 60);
-  const s = Math.max(0,_timerSecondsLeft) % 60;
-  const timeStr = `${m}:${String(s).padStart(2,'0')}`;
-  const isUrgent = _timerSecondsLeft <= 10;
-  // Update floating timer
-  const el = document.getElementById('timer-display');
-  if (el) { el.textContent = timeStr; el.style.color = isUrgent ? '#EF4444' : '#00D4FF'; }
-  // Update in-workout mode timer
-  const wmel = document.getElementById('wm-timer-display');
-  if (wmel) { wmel.textContent = timeStr; wmel.classList.toggle('urgent', isUrgent); }
-}
-
-// ═══════════════════════════════════════════════════
-// TOUCH DRAG-AND-DROP (mobile calendar)
-// ═══════════════════════════════════════════════════
-let _touchDragDate = null;
-let _touchDragId   = null;
-let _touchEl       = null;
-let _touchClone    = null;
 
 function initTouchDrag() {
   document.addEventListener('touchstart', e => {
@@ -4152,7 +4077,6 @@ async function renderHistory() {
           ${totalSets?`<div class="hist-stat"><strong>${totalSets}</strong> sets</div>`:''}
           ${totalVol?`<div class="hist-stat"><strong>${Math.round(totalVol).toLocaleString()}</strong> lb vol</div>`:''}
           ${cardioEx.map(c=>`<div class="hist-stat"><strong>${c.cardio.dist}</strong> mi</div>`).join('')}
-          ${w.rx?'<span class="pill pill-blue" style="font-size:10px">Rx\'d</span>':''}
         </div>
         ${exp?`<div class="hist-detail">${exDetail}${w.notes?`<div style="font-size:12px;color:var(--gray-400);font-style:italic;margin-top:4px">${w.notes}</div>`:''}</div>`:''}
       </div>`;
@@ -4419,11 +4343,6 @@ function renderHelp() {
           <div class="help-tip"><span>💡</span><div>Tap Done to close the calculator and return directly to your workout.</div></div>
         </div>
       </div>
-        <div class="help-card-title">✅ Rx'd checkbox</div>
-        <div class="help-card-body">
-          Mark when you completed the workout exactly as written — no scaling, no substitutions. Optional and purely informational. Shows as an orange badge in your history.
-        </div>
-      </div>
     </div>
 
     <!-- IN-WORKOUT MODE -->
@@ -4446,7 +4365,6 @@ function renderHelp() {
             <li><strong>📋 Form Cues</strong> — tap the collapsible "Form Cues" line under any exercise name for 3-4 key coaching points. Built-in for all 65 preset exercises. For custom exercises, AI generates them automatically the first time you tap.</li>
             <li><strong>Warm-Up & Cool Down</strong> — one large circle button marks the whole section done at once</li>
             <li><strong>Main Workout</strong> — large inputs with <strong>ghost progression numbers</strong> showing your suggested next weight and reps based on last session</li>
-            <li><strong>Rest timer</strong> — starts automatically after every checked set, turns red under 10 seconds</li>
             <li><strong>📝 Notes panel</strong> — open by default below the exercise. Shows your previous session notes as a reminder and has a field to write new ones. Tap 📝 in the footer to hide it if you want a cleaner view.</li>
             <li><strong>🔢 Plate Calculator</strong> (footer) — enter a target weight, pick your bar, and see exactly which plates to load per side</li>
             <li><strong>Prev / Next buttons</strong> — alternative to swiping</li>
@@ -4475,23 +4393,6 @@ function renderHelp() {
           You can also leave a short comment for your coach. This feedback is attached to the workout itself — if you move it to a different day on the calendar, the feedback travels with it. Your coach sees it on your athlete profile.
         </div>
       </div>
-      <div class="help-card">
-        <div class="help-card-title">⏱ Rest timer</div>
-        <div class="help-card-body">
-          Starts automatically after every checked set. Default is <strong>1:30</strong> — change it with the Rest Timer dropdown in the log modal before entering workout mode (1:00, 1:30, 2:00, 3:00, or Off).
-        </div>
-      </div>
-    </div>
-
-    <!-- PROGRAMS -->
-    <div class="help-section">
-      <div class="help-section-title">📋 Programs</div>
-      <div class="help-card">
-        <div class="help-card-title">📋 Preset vs custom programs</div>
-        <div class="help-card-body">
-          Notch includes four <strong>preset programs</strong> (Push/Pull/Legs, 5/3/1, Run 3×/Week, Upper/Lower) ready to activate immediately. <strong>Custom programs</strong> (admin only) let you build your own with full control over every day, exercise, sets, reps, and coach notes.
-          <div class="help-tip"><span>💡</span><div>Deactivating a program removes the orange planned dots from your calendar but doesn't delete anything you've already logged.</div></div>
-        </div>
       </div>
       <div class="help-card">
         <div class="help-card-title">➕ Adding exercises in the program builder</div>
@@ -4749,7 +4650,7 @@ function renderHelp() {
             <li>💡 <strong>Pull down to refresh.</strong> On mobile, pull down from the top of any view and release to reload the latest data — same gesture as most native apps.</li>
             <li>💡 <strong>Use the Workout Builder on unplanned training days.</strong> No program? No problem — pick your goal, equipment, and time and get a complete workout in seconds.</li>
             <li>💡 <strong>Always write notes after a workout.</strong> Even one sentence — "back was tight" or "felt strong, add 5lb." They appear as a reminder next time you do the same session.</li>
-            <li>💡 <strong>Use ⚡ Workout Mode at the gym.</strong> The log modal is for setup. Workout Mode is what you use between sets — bigger inputs, rest timer, screen stays on, and you can swipe between exercises.</li>
+            <li>💡 <strong>Use ⚡ Workout Mode at the gym.</strong> The log modal is for setup. Workout Mode is what you use between sets — bigger inputs, screen stays on, and you can swipe between exercises.</li>
             <li>💡 <strong>Use autocomplete for exercise names.</strong> Picking from the suggestion list keeps your history consistent and makes progress charts much more accurate.</li>
             <li>💡 <strong>Don't stress about incomplete sessions.</strong> Save even if you didn't finish. An amber dot is still progress. You can edit any logged workout by tapping the day on the calendar.</li>
             <li>💡 <strong>Cardio exercises are auto-detected.</strong> Any exercise with "run", "row", "bike", "swim", or "cardio" in the name switches automatically to distance/pace/duration logging.</li>
