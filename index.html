@@ -1827,7 +1827,8 @@ function renderLogModal(existing) {
     </div>
     <div class="field">
       <label>Notes</label>
-      <textarea id="log-notes" rows="2" placeholder="How'd it go?">${existing?.notes||''}</textarea>
+      <textarea id="log-notes" rows="4" placeholder="How'd it go? Any notes for your coach or future self..."
+        style="resize:vertical;min-height:80px">${existing?.notes||''}</textarea>
     </div>`;
   document.getElementById('modal-footer').innerHTML=`
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
