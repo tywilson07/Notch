@@ -1391,6 +1391,7 @@ async function renderDayPanel(ds) {
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
           <button class="btn btn-xs btn-ghost" onclick="openMoveWorkout('${w.id}','${ds}')">↕ Move</button>
+          <button class="btn btn-xs btn-ghost" onclick="openCopyWorkout('${w.id}','${ds}')">📋 Copy</button>
           <button class="btn btn-xs btn-ghost" onclick="editLog('${ds}','${w.id}')">Edit</button>
           <button class="btn btn-xs btn-danger" onclick="deleteLog('${ds}','${w.id}')">✕</button>
         </div>
@@ -2238,6 +2239,100 @@ async function cancelPlannedMove(overrideId, originalDate) {
     await renderCalendar();
     toast('Workout returned to original day');
   }catch(e){toast('Failed — try again');}
+}
+
+async function openCopyWorkout(workoutId, fromDate) {
+  // Find the workout
+  const workout = (_calWorkouts[fromDate]||[]).find(w=>w.id===workoutId);
+  const name = workout?.day_name || workout?.name || 'Workout';
+
+  const buildPickerMonth = (year, month) => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const monthLabel = new Date(year, month, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const today = todayStr();
+    let html = `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:8px;margin-top:12px">${monthLabel}</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+      ${['S','M','T','W','T','F','S'].map(d=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--text-muted);padding:2px">${d}</div>`).join('')}
+    </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
+    for(let i=0;i<firstDay;i++) html+=`<div></div>`;
+    for(let day=1;day<=daysInMonth;day++){
+      const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const isPast = ds <= fromDate;
+      const isToday = ds === today;
+      html+=`<button onclick="confirmCopyWorkout('${workoutId}','${fromDate}','${ds}')"
+        ${isPast?'disabled':''}
+        style="padding:6px 2px;border-radius:5px;border:1.5px solid var(--border);
+          background:${isPast?'none':'var(--surface2)'};
+          color:${isPast?'var(--border)':isToday?'var(--lime)':'var(--text-primary)'};
+          font-size:13px;font-weight:${isToday?'800':'500'};
+          cursor:${isPast?'default':'pointer'};font-family:var(--mono);
+          opacity:${isPast?'.3':'1'}">
+        ${day}</button>`;
+    }
+    html+=`</div>`;
+    return html;
+  };
+
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const nextM=m+1>11?0:m+1, nextY=m+1>11?y+1:y;
+
+  document.getElementById('modal-title').textContent = `📋 Copy "${name}"`;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Pick a future date to copy this workout to. Exercises, sets, and structure carry over — weights and reps start blank so you fill in your new numbers.
+    </div>
+    ${buildPickerMonth(y,m)}
+    ${buildPickerMonth(nextY,nextM)}`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost btn-full" onclick="closeModal()">Cancel</button>`;
+  showModal();
+}
+
+async function confirmCopyWorkout(workoutId, fromDate, toDate) {
+  if (toDate <= fromDate) { toast('Pick a future date'); return; }
+
+  // Load the source workout
+  const workout = (_calWorkouts[fromDate]||[]).find(w=>w.id===workoutId);
+  if (!workout) { toast('Workout not found'); return; }
+
+  // Build clean copy — same structure, blank weights/reps
+  const cleanExercises = (workout.exercises||[]).map(ex => {
+    if (ex.type === 'strength') {
+      return {
+        ...ex,
+        sets: (ex.sets||[]).map(s => ({...s, w:'', r:'', done:false})),
+        expanded: false
+      };
+    }
+    if (ex.type === 'cardio') {
+      return {...ex, cardio:{dist:'',pace:'',dur:'',done:false}, expanded:false};
+    }
+    return {...ex, done:false, expanded:false};
+  });
+
+  const payload = {
+    user_id: currentUser.id,
+    date: toDate,
+    day_name: workout.day_name || workout.name,
+    exercises: cleanExercises,
+    notes: '',
+    warmup_notes: '',
+    main_notes: '',
+    cooldown_notes: '',
+    result: ''
+  };
+
+  try {
+    await db('workouts','POST',payload);
+    closeModal();
+    selectedDate = toDate;
+    await renderCalendar();
+    toast(`Copied to ${new Date(toDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ✓`);
+  } catch(e) {
+    toast('Copy failed — try again');
+    console.error(e);
+  }
 }
 
 async function openMoveWorkout(workoutId, fromDate) {
@@ -4289,9 +4384,14 @@ function renderHelp() {
         </div>
       </div>
       <div class="help-card">
-        <div class="help-card-title">📊 Program progress indicator</div>
+        <div class="help-card-title">📊 Program progress &amp; monthly goal</div>
         <div class="help-card-body">
-          At the bottom of the sidebar you'll see your active program name with a progress bar — e.g. <strong>"4 of 18 workouts · 22%"</strong>. Counts actual logged sessions since you activated the program. If life gets in the way and a 6-week program takes 7 weeks, the bar still reaches 100% when you hit the total session count.
+          Two bars keep you on track:
+          <br><br>
+          <strong>Program progress</strong> (sidebar) — shows how many workouts you've completed out of the total program workouts, e.g. <strong>"4 of 18 workouts · 22%"</strong>. Only counts workouts matching the program's scheduled day names.
+          <br><br>
+          <strong>🎯 Monthly goal bar</strong> (under the calendar) — shows your workout count for the current month vs your monthly goal. Fills orange as you log, turns lime green when you hit it. A 🔥 streak shows consecutive months you've hit goal.
+          <div class="help-tip"><span>💡</span><div>Admins can set a custom monthly goal per athlete from the Athletes dashboard. Default is 12 workouts/month.</div></div>
         </div>
       </div>
     </div>
@@ -4323,6 +4423,14 @@ function renderHelp() {
           <div class="help-tip"><span>💡</span><div>Consistent naming matters. "Bench Press" and "bench press" track as separate exercises in your charts. Using autocomplete ensures everything rolls up correctly.</div></div>
         </div>
       </div>
+      <div class="help-card">
+        <div class="help-card-title">📋 Copy last workout</div>
+        <div class="help-card-body">
+          When opening a workout to log, the footer shows a small <strong>📋 Last</strong> button. Tap it before entering anything and it pre-fills every weight and reps field with exactly what you logged last time for each exercise. One tap instead of trying to remember your numbers from last session.
+          <div class="help-tip"><span>💡</span><div>It only fills fields that are currently empty — so if you've already typed a weight it won't overwrite it. Use it as a starting point then adjust up for progression.</div></div>
+        </div>
+      </div>
+
       <div class="help-card">
         <div class="help-card-title">📋 Previous column</div>
         <div class="help-card-body">
@@ -4409,10 +4517,12 @@ function renderHelp() {
             <li><strong>📋 Form Cues</strong> — tap the collapsible "Form Cues" line under any exercise name for 3-4 key coaching points. Built-in for all 65 preset exercises. For custom exercises, AI generates them automatically the first time you tap.</li>
             <li><strong>Warm-Up & Cool Down</strong> — one large circle button marks the whole section done at once</li>
             <li><strong>Main Workout</strong> — large inputs with <strong>ghost progression numbers</strong> showing your suggested next weight and reps based on last session</li>
-            <li><strong>📝 Notes panel</strong> — open by default below the exercise. Shows your previous session notes as a reminder and has a field to write new ones. Tap 📝 in the footer to hide it if you want a cleaner view.</li>
+            <li><strong>📝 Notes panel</strong> — open by default below the exercise. Shows your previous session notes as a reminder and lets you type new ones. Tap 📝 in the footer to hide it.</li>
             <li><strong>🔢 Plate Calculator</strong> (footer) — enter a target weight, pick your bar, and see exactly which plates to load per side</li>
+            <li><strong>🏆 Wrap-Up screen</strong> — the last screen in workout mode. Rate how the workout felt (😴💪🔥💀) and add overall notes before saving.</li>
             <li><strong>Prev / Next buttons</strong> — alternative to swiping</li>
             <li><strong>"🏆 Finish & Save"</strong> replaces Next on the last exercise</li>
+            <li><strong>🎉 Completion celebration</strong> — finishing a workout triggers a confetti burst on the completion screen. You've earned it.</li>
             <li><strong>✕ Exit</strong> — returns to the log modal with all data intact</li>
           </ul>
         </div>
@@ -4427,7 +4537,7 @@ function renderHelp() {
       <div class="help-card">
         <div class="help-card-title">😴💪🔥💀 How did it feel?</div>
         <div class="help-card-body">
-          After saving a workout, the completion screen shows a <strong>"How did it feel?"</strong> prompt with four options:
+          The <strong>Wrap-Up screen</strong> (last screen in ⚡ Workout Mode) and the <strong>completion screen</strong> (after saving) both let you rate how the workout felt:
           <ul>
             <li>😴 <strong>Easy</strong> — could have done more</li>
             <li>💪 <strong>Good</strong> — right level of challenge</li>
