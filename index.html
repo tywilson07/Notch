@@ -6101,10 +6101,11 @@ function renderWorkoutBuilder() {
     <div class="builder-step" id="builder-goal-step">
       <div class="builder-step-title">Step 1 — What's your goal today?</div>
       <div class="builder-option-grid">
-        <button class="builder-option" onclick="builderSetGoal('Strength',this)"><span class="builder-option-icon">💪</span><span class="builder-option-label">Strength</span></button>
+        <button class="builder-option" onclick="builderSetGoal('Strength',this)"><span class="builder-option-icon">🏋️</span><span class="builder-option-label">Strength</span></button>
+        <button class="builder-option" onclick="builderSetGoal('Hypertrophy',this)"><span class="builder-option-icon">💪</span><span class="builder-option-label">Hypertrophy</span></button>
         <button class="builder-option" onclick="builderSetGoal('Cardio',this)"><span class="builder-option-icon">🏃</span><span class="builder-option-label">Cardio</span></button>
         <button class="builder-option" onclick="builderSetGoal('Mobility',this)"><span class="builder-option-icon">🧘</span><span class="builder-option-label">Mobility</span></button>
-        <button class="builder-option" onclick="builderSetGoal('Full Body',this)"><span class="builder-option-icon">⚡</span><span class="builder-option-label">Full Body</span></button>
+        <button class="builder-option" style="grid-column:span 2" onclick="builderSetGoal('Full Body',this)"><span class="builder-option-icon">⚡</span><span class="builder-option-label">Full Body</span></button>
       </div>
     </div>
     <div class="builder-step" id="builder-focus-step" style="display:none">
@@ -6141,22 +6142,32 @@ function builderSetGoal(val, btn) {
   _builderState.focus = [];
   _builderState.equipment = null;
   _builderState.duration = null;
-  // Highlight selected goal
   document.querySelectorAll('#builder-goal-step .builder-option').forEach(b=>b.classList.remove('selected'));
   btn.classList.add('selected');
-  // Hide downstream steps
   document.getElementById('builder-equipment-step').style.display='none';
   document.getElementById('builder-duration-step').style.display='none';
   document.getElementById('builder-generate-area').style.display='none';
   document.getElementById('builder-result').innerHTML='';
-  // Build focus options
-  const choices = val==='Cardio'
-    ? ['Running','Rowing','Cycling','Mixed Cardio']
-    : val==='Mobility'
-      ? ['Full Body','Hips & Lower Back','Shoulders & Chest','Legs & Hamstrings']
-      : ['Chest','Back','Legs','Shoulders','Biceps','Triceps','Core'];
+
+  if (val === 'Full Body') {
+    // Skip muscle group selection — Full Body hits everything automatically
+    _builderState.focus = ['Chest','Back','Legs','Shoulders','Biceps','Triceps','Core'];
+    document.getElementById('builder-focus-step').style.display='none';
+    document.getElementById('builder-equipment-step').style.display='';
+    return;
+  }
+
+  let choices = [];
+  if (val === 'Strength' || val === 'Hypertrophy') {
+    choices = ['Chest','Back','Legs','Shoulders','Biceps','Triceps','Core'];
+  } else if (val === 'Cardio') {
+    choices = ['Running','Rowing','Cycling','Mixed Cardio'];
+  } else if (val === 'Mobility') {
+    choices = ['Full Body','Hips & Lower Back','Shoulders & Chest','Legs & Hamstrings'];
+  }
+
   document.getElementById('builder-focus-options').innerHTML = choices.map(f=>`
-    <button class="builder-option" id="focus-btn-${f.replace(/[^a-z]/gi,'')}"
+    <button class="builder-option" data-val="${f}"
       onclick="builderToggleFocus('${f}',this)">
       <span class="builder-option-label">${f}</span>
     </button>`).join('');
@@ -6168,19 +6179,24 @@ function builderToggleFocus(val, btn) {
   if (!Array.isArray(_builderState.focus)) _builderState.focus = [];
   const idx = _builderState.focus.indexOf(val);
   if (idx > -1) {
-    // Deselect
     _builderState.focus.splice(idx, 1);
-    btn.classList.remove('selected');
   } else {
     if (_builderState.focus.length >= 3) { toast('Max 3 muscle groups'); return; }
     _builderState.focus.push(val);
-    btn.classList.add('selected');
   }
+  // Re-render ALL focus buttons from state — don't rely on btn reference (unreliable on mobile)
+  document.querySelectorAll('#builder-focus-options .builder-option').forEach(b => {
+    const bVal = b.dataset.val;
+    const isSelected = _builderState.focus.includes(bVal);
+    b.classList.toggle('selected', isSelected);
+    b.style.background = isSelected ? 'var(--orange-dim)' : '';
+    b.style.borderColor = isSelected ? 'var(--orange)' : '';
+    b.style.color = isSelected ? 'var(--orange)' : '';
+  });
   const sub = document.getElementById('builder-focus-subtitle');
-  sub.textContent = _builderState.focus.length
+  if (sub) sub.textContent = _builderState.focus.length
     ? `Selected: ${_builderState.focus.join(' + ')} — tap more or continue below`
     : 'Tap to select — choose up to 3';
-  // Show/hide equipment step
   document.getElementById('builder-equipment-step').style.display =
     _builderState.focus.length > 0 ? '' : 'none';
   if (_builderState.focus.length === 0) {
@@ -6188,6 +6204,7 @@ function builderToggleFocus(val, btn) {
     document.getElementById('builder-generate-area').style.display='none';
   }
 }
+
 
 function builderSetEquipment(val, btn) {
   _builderState.equipment = val;
@@ -6268,9 +6285,18 @@ function generateWorkoutLocal() {
     'Core':      [['Plank','Ab Wheel'],['Hanging Leg Raise','Cable Crunch'],['Russian Twist']],
   };
 
-  const mainCount = mins<=20?3:mins<=30?4:mins<=45?5:6;
+  // Full Body needs more exercises to cover all muscle groups
+  const mainCount = goal==='Full Body'
+    ? (mins<=30?5:mins<=45?7:8)
+    : (mins<=20?3:mins<=30?4:mins<=45?5:6);
   const perGroup = Math.ceil(mainCount / focusArr.length);
-  const setRep = {'Strength':mins<=30?{sets:'3',reps:'5'}:{sets:'4',reps:'5'},'Cardio':{sets:'1',reps:`${mins-10} min`},'Mobility':{sets:'1',reps:'60 sec each side'},'Full Body':{sets:'3',reps:'8-12'}};
+  const setRep = {
+    'Strength':   mins<=30?{sets:'3',reps:'3-5'}:{sets:'4',reps:'3-5'},   // heavy, low rep
+    'Hypertrophy':mins<=30?{sets:'3',reps:'8-12'}:{sets:'4',reps:'8-12'}, // moderate, hypertrophy
+    'Full Body':  {sets:'3',reps:'10-15'},                                  // lighter, full body
+    'Cardio':     {sets:'1',reps:`${mins-10} min`},
+    'Mobility':   {sets:'1',reps:'30-60 sec'},
+  };
   const defaultSetRep = setRep[goal]||{sets:'3',reps:'8-12'};
   const muscleNotes = {'Chest':'Targets chest and triceps','Back':'Targets lats and upper back','Legs':'Targets quads, hamstrings, and glutes','Shoulders':'Targets deltoids','Biceps':'Targets biceps','Triceps':'Targets triceps','Core':'Targets abs and obliques','Cardio':'Cardiovascular conditioning'};
 
