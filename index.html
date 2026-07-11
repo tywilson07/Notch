@@ -350,15 +350,15 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .wm-body{flex:1;overflow-y:auto;padding:16px}
 .wm-ex-name{font-size:24px;font-weight:900;color:var(--text-primary);margin-bottom:4px;letter-spacing:-.5px;text-transform:uppercase}
 .wm-ex-meta{font-size:12.5px;color:var(--text-muted);margin-bottom:16px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.wm-set-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:all .15s}
+.wm-set-row{display:flex;align-items:center;gap:10px;padding:14px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;transition:all .15s}
 .wm-set-row.active-set{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-mid)}
 .wm-set-row.done-set{border-color:var(--lime);background:var(--lime-dim)}
 .wm-set-num{font-size:12px;font-weight:800;color:var(--text-muted);width:36px;flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
 .wm-set-prev{font-size:11px;color:var(--text-muted);font-family:var(--mono);width:60px;flex-shrink:0}
-.wm-input{font-family:var(--mono);font-size:24px;font-weight:700;width:80px;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)}
+.wm-input{font-family:var(--mono);font-size:28px;font-weight:700;width:85px;text-align:center;padding:12px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)}
 .wm-input:focus{border-color:var(--orange);outline:none;box-shadow:0 0 0 2px var(--orange-mid)}
 .wm-input-label{font-size:9.5px;font-weight:800;color:var(--text-muted);text-align:center;margin-top:2px;text-transform:uppercase;letter-spacing:1px}
-.wm-check-btn{width:46px;height:46px;border-radius:50%;border:2px solid var(--border-strong);background:none;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex-shrink:0;transition:all .15s;margin-left:auto;color:var(--text-muted)}
+.wm-check-btn{width:56px;height:56px;border-radius:50%;border:2.5px solid var(--border-strong);background:none;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;flex-shrink:0;transition:all .15s;margin-left:auto;color:var(--text-muted)}
 .wm-check-btn.done{background:var(--lime);border-color:var(--lime);color:#0D0D0F;font-weight:900}
 .wm-footer{background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:8px;flex-shrink:0}
 
@@ -366,6 +366,10 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .coach-chart-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px}
 .coach-chart-label{font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:10px}
 
+
+/* ── SWIPE TO DONE ── */
+.wm-set-row{position:relative;overflow:hidden}
+.wm-set-row .swipe-indicator{position:absolute;left:0;top:0;bottom:0;background:var(--lime);display:flex;align-items:center;padding-left:14px;font-size:20px;font-weight:900;color:#0D0D0F;width:0;transition:width .15s;pointer-events:none;border-radius:var(--radius) 0 0 var(--radius);z-index:1}
 /* ── WEEK VIEW ── */
 .week-view-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .week-day-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;cursor:pointer;transition:border-color .12s;min-height:120px}
@@ -569,14 +573,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
       <button class="nav-item" onclick="nav('help',this)"><span class="icon">❓</span>How to Use</button>
     </nav>
     <div class="sidebar-footer">
-      <div id="prog-progress-label" style="font-size:11.5px;color:var(--text-secondary);margin-bottom:6px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);display:none">
-        <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:3px">Current Program</div>
-        <div id="prog-progress-name" style="font-weight:700;color:var(--text-primary);margin-bottom:5px;font-size:12px"></div>
-        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px">
-          <div id="prog-progress-bar" style="height:100%;background:var(--orange);border-radius:2px;transition:width .3s;box-shadow:0 0 6px var(--orange)"></div>
-        </div>
-        <div id="prog-progress-text" style="font-size:10.5px;color:var(--text-muted)"></div>
-      </div>
+      <div id="prog-progress-container"></div>
       <div id="sidebar-goal-mini" style="display:none;margin-bottom:6px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border);font-size:11px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <span style="font-weight:700;color:var(--text-muted);font-size:9px;text-transform:uppercase;letter-spacing:.8px">🎯 Monthly Goal</span>
@@ -1121,8 +1118,7 @@ let selectedDate = todayStr();
 let _calWorkouts = {};   // local cache {date: [workout,...]}
 let _calAssigned = {};   // assigned workouts from coach {date: [assignment,...]}
 let _calPrograms = [];   // programs visible to this user
-let _activeProgId = null;
-let _activeProgStartDate = null;
+let _activeProgAssignments = []; // [{id, program_id, start_date}] — supports multiple simultaneous active programs
 let _calOverrides = {};  // planned workout overrides {newDate: {originalDate, workoutName, programId}}
 
 function todayStr() {
@@ -1159,14 +1155,11 @@ async function renderCalendar() {
       _calAssigned[a.date].push(a);
     });
     _calPrograms = progs || [];
-    const activeAssign = (assigns||[]).find(a=>a.active);
-    _activeProgId = activeAssign ? activeAssign.program_id : null;
-    // Only use start_date — never fall back to created_at (which could be wrong)
-    _activeProgStartDate = activeAssign?.start_date || null;
-    // Build overrides map: originalDate → newDate
+    _activeProgAssignments = (assigns||[]).filter(a=>a.active).map(a=>({id:a.id, program_id:a.program_id, start_date:a.start_date||null}));
+    // Build overrides map: originalDate → newDate (tagged with programId for multi-program disambiguation)
     _calOverrides = {};
     (overrides||[]).forEach(o => {
-      _calOverrides[o.original_date] = {newDate:o.new_date, workoutName:o.workout_name, id:o.id};
+      _calOverrides[o.original_date] = {newDate:o.new_date, workoutName:o.workout_name, id:o.id, programId:o.program_id||null};
     });
   } catch(e) { console.error('Calendar load error', e); }
   if (_calView === 'week') {
@@ -1268,46 +1261,58 @@ function buildCalGrid() {
 }
 
 function getPlannedWorkouts(ds) {
-  // Returns array — supports multiple planned workouts on same day
-  if (!_activeProgId) return [];
-  const prog = _calPrograms.find(p=>p.id===_activeProgId);
-  if (!prog) return [];
+  // Returns array — supports multiple planned workouts per day, across multiple simultaneously active programs
+  if (!_activeProgAssignments.length) return [];
   const overrides = _calOverrides||{};
+  const dow = new Date(ds+'T00:00:00').getDay();
   const results = [];
 
-  // Enforce program week limit — only show planned workouts within the program duration
-  if (_activeProgStartDate && prog.weeks) {
-    const startMs = new Date(_activeProgStartDate+'T00:00:00').getTime();
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const endMs = startMs + (prog.weeks * 7 * msPerDay);
-    const dsMs = new Date(ds+'T00:00:00').getTime();
-    if (ds === '2026-07-07') console.log(`Jul 7 check: start=${_activeProgStartDate}, startMs=${startMs}, dsMs=${dsMs}, blocked=${dsMs < startMs}`);
-    if (dsMs < startMs || dsMs >= endMs) {
-      // Only show if a workout was explicitly moved to this date
+  _activeProgAssignments.forEach(assign => {
+    const prog = _calPrograms.find(p=>p.id===assign.program_id);
+    if (!prog) return;
+
+    // Determine whether ds falls within this program's window
+    let inWindow = true;
+    if (assign.start_date && prog.weeks) {
+      const startMs = new Date(assign.start_date+'T00:00:00').getTime();
+      const msPerDay = 24*60*60*1000;
+      const endMs = startMs + (prog.weeks * 7 * msPerDay);
+      const dsMs = new Date(ds+'T00:00:00').getTime();
+      inWindow = dsMs >= startMs && dsMs < endMs;
+    }
+
+    // Overrides tagged to this program (or untagged, for backward compatibility with older data)
+    const matchesThisProgram = (ov) => !ov.programId || ov.programId === prog.id;
+
+    if (!inWindow) {
+      // Outside window — only show if a workout from this program was explicitly moved here
       Object.entries(overrides).forEach(([origDate,ov])=>{
-        if (ov.newDate !== ds) return;
+        if (ov.newDate !== ds || !matchesThisProgram(ov)) return;
         const origDow = new Date(origDate+'T12:00:00').getDay();
         const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===origDow);
-        if (planned) results.push({...planned, movedFrom:origDate, overrideId:ov.id});
+        if (planned) results.push({...planned, movedFrom:origDate, overrideId:ov.id, programId:prog.id, programName:prog.name});
       });
-      return results;
+      return;
     }
-  }
 
-  // Add workouts moved TO this date from other dates
-  Object.entries(overrides).forEach(([origDate,ov])=>{
-    if (ov.newDate !== ds) return;
-    const origDow = new Date(origDate+'T12:00:00').getDay();
-    const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===origDow);
-    if (planned) results.push({...planned, movedFrom:origDate, overrideId:ov.id});
+    // Workouts moved TO this date (from this program)
+    Object.entries(overrides).forEach(([origDate,ov])=>{
+      if (ov.newDate !== ds || !matchesThisProgram(ov)) return;
+      const origDow = new Date(origDate+'T12:00:00').getDay();
+      const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===origDow);
+      if (planned) results.push({...planned, movedFrom:origDate, overrideId:ov.id, programId:prog.id, programName:prog.name});
+    });
+
+    // Normal scheduled workout for this program, if not moved away
+    const movedAway = overrides[ds] && matchesThisProgram(overrides[ds]);
+    if (!movedAway) {
+      const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===dow);
+      // Skip if the same-named workout for this program was already moved INTO this date
+      // (prevents a duplicate when a workout is moved onto a date the program also schedules it)
+      const alreadyMovedIn = planned && results.some(x=>x.programId===prog.id && x.name===planned.name && x.movedFrom);
+      if (planned && !alreadyMovedIn) results.push({...planned, programId:prog.id, programName:prog.name});
+    }
   });
-
-  // Add normally scheduled workout if not moved away
-  if (!overrides[ds]) {
-    const dow = new Date(ds+'T12:00:00').getDay();
-    const planned = (prog.schedule||[]).find(s=>parseInt(s.dow)===dow);
-    if (planned) results.push(planned);
-  }
 
   return results;
 }
@@ -1315,6 +1320,19 @@ function getPlannedWorkouts(ds) {
 function getPlannedWorkout(ds) {
   // Legacy single accessor — returns first planned workout
   return getPlannedWorkouts(ds)[0]||null;
+}
+
+function findProgramForPlannedWorkout(ds, workoutName) {
+  // Given a date and a workout name, find which active program it belongs to (for tagging overrides correctly)
+  const dow = new Date(ds+'T12:00:00').getDay();
+  for (const assign of _activeProgAssignments) {
+    const prog = _calPrograms.find(p=>p.id===assign.program_id);
+    if (!prog) continue;
+    const match = (prog.schedule||[]).find(s=>parseInt(s.dow)===dow && s.name===workoutName);
+    if (match) return prog.id;
+  }
+  // Fallback: first active program
+  return _activeProgAssignments[0]?.program_id || null;
 }
 
 let _calView = 'month'; // 'month' or 'week'
@@ -1679,7 +1697,7 @@ async function calDrop(e,toDate){
       } else {
         await db('workout_schedule_overrides','POST',{
           user_id:currentUser.id, original_date:fromDate,
-          new_date:toDate, workout_name:workoutName, program_id:_activeProgId||null
+          new_date:toDate, workout_name:workoutName, program_id:findProgramForPlannedWorkout(fromDate,workoutName)
         });
       }
       toast(`Moved to ${new Date(toDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} ✓`);
@@ -1703,7 +1721,7 @@ async function calDrop(e,toDate){
 // ═══════════════════════════════════════════════════
 // LOG MODAL
 // ═══════════════════════════════════════════════════
-let _logDate=null, _logId=null, _logExercises=[];
+let _logDate=null, _logId=null, _logExercises=[], _logDayName=null;
 
 // ── Previous workout cache ──
 let _prevCache = {};
@@ -1843,7 +1861,10 @@ function getProgressionSuggestion(name, setIdx, targetReps) {
 async function openLogModal(ds, suggestedName) {
   _logDate  = ds||selectedDate;
   _logId    = null;
-  const planned = getPlannedWorkout(_logDate);
+  _logDayName = suggestedName || null;
+  const planned = suggestedName
+    ? getPlannedWorkouts(_logDate).find(p=>p.name===suggestedName) || getPlannedWorkout(_logDate)
+    : getPlannedWorkout(_logDate);
   if (planned && (planned.warmup?.length || planned.exercises?.length || planned.cooldown?.length)) {
     const toEx = (exData, sectionLabel) => {
       const name = typeof exData === 'string' ? exData : (exData.name||'');
@@ -1902,7 +1923,9 @@ async function editLog(ds, id) {
 }
 
 function renderLogModal(existing) {
-  const planned=getPlannedWorkout(_logDate);
+  const planned = _logDayName
+    ? getPlannedWorkouts(_logDate).find(p=>p.name===_logDayName) || getPlannedWorkout(_logDate)
+    : getPlannedWorkout(_logDate);
   const d=new Date((_logDate||todayStr())+'T12:00:00');
   const dateLabel=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 
@@ -2208,9 +2231,19 @@ function toggleSet(ei,si){
   }
   if(_logExercises[ei]?.sets?.[si]) {
     _logExercises[ei].sets[si].done=!_logExercises[ei].sets[si].done;
-    // Start rest timer when a set is checked as done
+    // Auto-fill subsequent empty sets with this set's weight and reps
     if (_logExercises[ei].sets[si].done) {
-      const dur = parseInt(document.getElementById('rest-dur')?.value||'90');
+      const w = _logExercises[ei].sets[si].w;
+      const r = _logExercises[ei].sets[si].r;
+      if (w || r) {
+        for (let j = si+1; j < _logExercises[ei].sets.length; j++) {
+          const next = _logExercises[ei].sets[j];
+          if (!next.done && !next.w && !next.r) {
+            next.w = w;
+            next.r = r;
+          }
+        }
+      }
     }
   }
   if(block) block.outerHTML=buildExBlock(_logExercises[ei],ei);
@@ -2266,8 +2299,10 @@ async function saveLog(){
   const warmup_notes=document.getElementById('log-warmup-notes')?.value?.trim()||'';
   const main_notes=document.getElementById('log-main-notes')?.value?.trim()||'';
   const cooldown_notes=document.getElementById('log-cooldown-notes')?.value?.trim()||'';
-  const planned=getPlannedWorkout(_logDate);
-  const dayName=planned?planned.name:_logExercises.map(e=>e.name).join(', ').slice(0,40);
+  const planned = _logDayName
+    ? getPlannedWorkouts(_logDate).find(p=>p.name===_logDayName) || getPlannedWorkout(_logDate)
+    : getPlannedWorkout(_logDate);
+  const dayName=planned?planned.name:(_logDayName||_logExercises.map(e=>e.name).join(', ').slice(0,40));
 
   // Gather stats for completion screen
   const newPRs = [];
@@ -2371,7 +2406,7 @@ async function confirmMovePlannedWorkout(fromDate, toDate, workoutName, existing
         original_date:fromDate,
         new_date:toDate,
         workout_name:workoutName,
-        program_id:_activeProgId||null
+        program_id:findProgramForPlannedWorkout(fromDate,workoutName)
       });
     }
     closeModal();
@@ -2439,7 +2474,7 @@ async function openCopyPlannedWorkout(fromDate, workoutName) {
 
 async function confirmCopyPlannedWorkout(fromDate, toDate, workoutName) {
   // Get the planned workout template from the program
-  const planned = getPlannedWorkout(fromDate);
+  const planned = getPlannedWorkouts(fromDate).find(p=>p.name===workoutName) || getPlannedWorkout(fromDate);
   if (!planned) { toast('Could not find workout template'); return; }
 
   // Convert program exercises to blank log format
@@ -2698,26 +2733,31 @@ async function renderPrograms(){
     ]);
     // Cache globally so activateProgram can look up weeks/name
     if (progs) _calPrograms = progs;
-    const activeAssign=(assigns||[]).find(a=>a.active);
-    const activeProgId=activeAssign?.program_id;
+    const activeAssigns=(assigns||[]).filter(a=>a.active);
+    const activeProgIds=activeAssigns.map(a=>a.program_id);
 
-    // Active card
-    const activeProg=progs?.find(p=>p.id===activeProgId);
+    // Active programs — now a list, supports multiple simultaneous programs
     const activeCont=document.getElementById('active-prog-card');
-    if(activeProg){
-      activeCont.innerHTML=`<div style="background:var(--blue-light);border:1.5px solid var(--blue);border-radius:var(--radius-lg);padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px">Active Program</div>
-          <div style="font-size:14px;font-weight:700">${activeProg.name}</div>
-          <div style="font-size:12px;color:var(--gray-500);margin-top:2px">${activeProg.weeks} weeks · ${(activeProg.schedule||[]).length} days/week</div>
-        </div>
-        <button class="btn btn-ghost btn-sm" onclick="deactivateProgram()">Remove</button>
-      </div>`;
+    if(activeAssigns.length){
+      const cards = activeAssigns.map(a=>{
+        const p = progs?.find(pp=>pp.id===a.program_id);
+        if (!p) return '';
+        const startLabel = a.start_date ? ` · starts ${new Date(a.start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}` : '';
+        return `<div style="background:var(--blue-light);border:1.5px solid var(--blue);border-radius:var(--radius-lg);padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px">Active Program</div>
+            <div style="font-size:14px;font-weight:700">${p.name}</div>
+            <div style="font-size:12px;color:var(--gray-500);margin-top:2px">${p.weeks} weeks · ${(p.schedule||[]).length} days/week${startLabel}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="deactivateOneProgram('${a.id}')">Remove</button>
+        </div>`;
+      }).join('');
+      activeCont.innerHTML = cards;
     } else {
-      activeCont.innerHTML=`<div style="color:var(--gray-500);font-size:13px;padding:10px 0">No active program — select one below.</div>`;
+      activeCont.innerHTML=`<div style="color:var(--gray-500);font-size:13px;padding:10px 0">No active program — select one below. You can run more than one at once, e.g. a strength program alongside a running program.</div>`;
     }
 
-    // Admin: assign panel
+    // Admin: assign panel — multi-program chips per athlete
     const assignPanel=document.getElementById('assign-panel');
     if(isAdmin){
       const allUsers=await db('users','GET',null,'?select=id,username,role');
@@ -2725,19 +2765,26 @@ async function renderPrograms(){
       if(athletes.length){
         const allAssigns=await db('program_assignments','GET',null,'?select=*');
         const rows=athletes.map(u=>{
-          const uAssign=(allAssigns||[]).find(a=>a.user_id===u.id&&a.active);
-          const uProg=uAssign?progs?.find(p=>p.id===uAssign.program_id):null;
-          const progOpts=(progs||[]).map(p=>`<option value="${p.id}" ${uProg?.id===p.id?'selected':''}>${p.name}</option>`).join('');
-          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-100)">
-            <div style="flex:1;font-size:13px;font-weight:600">👤 ${u.username}</div>
-            <select style="flex:2;padding:5px 8px;font-size:12.5px" onchange="assignProgramToUser('${u.id}',this.value,'${u.username}')">
-              <option value="">— No program —</option>
-              ${progOpts}
-            </select>
+          const uAssigns=(allAssigns||[]).filter(a=>a.user_id===u.id&&a.active);
+          const chips = uAssigns.map(a=>{
+            const p = progs?.find(pp=>pp.id===a.program_id);
+            if (!p) return '';
+            return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:3px 8px 3px 10px;font-size:11.5px;font-weight:600;margin:2px 4px 2px 0">
+              ${p.name}
+              <button onclick="removeAthleteProgram('${a.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0;line-height:1" title="Remove">✕</button>
+            </span>`;
+          }).join('');
+          return `<div style="padding:10px 0;border-bottom:1px solid var(--gray-100)">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+              <div style="font-size:13px;font-weight:600">👤 ${u.username}</div>
+              <button class="btn btn-xs btn-white" onclick="openAssignProgramPicker('${u.id}','${u.username}')">+ Add Program</button>
+            </div>
+            <div>${chips || `<span style="font-size:11.5px;color:var(--text-muted);font-style:italic">No active programs</span>`}</div>
           </div>`;
         }).join('');
         assignPanel.innerHTML=`<div style="background:var(--amber-light);border:1px solid #FDE68A;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px">
           <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">👑 Assign Programs to Athletes</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Athletes can run more than one program at once — e.g. strength + running.</div>
           ${rows}
         </div>`;
       } else {
@@ -2755,7 +2802,7 @@ async function renderPrograms(){
       return true;
     });
     grid.innerHTML=uniqueProgs.map(p=>{
-      const isActive=p.id===activeProgId;
+      const isActive=activeProgIds.includes(p.id);
       const tagClass=p.tag==='Powerlifting'?'pill-purple':p.tag==='Cardio'?'pill-green':p.tag==='Custom'?'pill-amber':'pill-blue';
       return `<div class="prog-card ${isActive?'active-prog':''}" onclick="activateProgram('${p.id}')">
         ${isActive?'<div class="active-check">✓</div>':''}
@@ -2779,19 +2826,21 @@ function activateProgram(id){
   const prog = (_calPrograms||[]).find(p=>p.id===id);
   const progName = prog?.name || 'Program';
   const weeks = prog?.weeks;
-  document.getElementById('modal-title').textContent = `Activate ${progName}`;
+  const alreadyActive = _activeProgAssignments.some(a=>a.program_id===id);
+  document.getElementById('modal-title').textContent = `${alreadyActive?'Update':'Activate'} ${progName}`;
   document.getElementById('modal-body').innerHTML = `
     <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
-      When does this program start? The calendar will show workouts for ${weeks ? `<strong>${weeks} weeks</strong>` : 'the full program duration'} from this date.
+      ${alreadyActive?'This program is already active — you can update its start date below.':'When does this program start?'} The calendar will show workouts for ${weeks ? `<strong>${weeks} weeks</strong>` : 'the full program duration'} from this date.
     </div>
     <div class="field">
       <label>Start Date</label>
       <input id="prog-start-date" type="date" value="${todayStr()}"
         style="font-size:16px;padding:10px;font-family:var(--font)">
-    </div>`;
+    </div>
+    ${!alreadyActive&&_activeProgAssignments.length?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">💡 This won't remove your other active programs — you can run more than one at once.</div>`:''}`;
   document.getElementById('modal-footer').innerHTML = `
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-    <button class="btn btn-primary" onclick="confirmActivateProgram('${id}')">Activate</button>`;
+    <button class="btn btn-primary" onclick="confirmActivateProgram('${id}')">${alreadyActive?'Update':'Activate'}</button>`;
   showModal();
 }
 
@@ -2799,94 +2848,98 @@ async function confirmActivateProgram(id){
   const startDate = document.getElementById('prog-start-date')?.value || todayStr();
   closeModal();
   try{
-    const existing=await db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=id`);
-    for(const a of (existing||[])){
-      await db('program_assignments','PATCH',{active:false},`?id=eq.${a.id}`);
-    }
+    // Additive — does NOT deactivate any other active program
     const check=await db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&program_id=eq.${id}&select=id`);
     if(check&&check.length){
       await db('program_assignments','PATCH',{active:true,start_date:startDate},`?user_id=eq.${currentUser.id}&program_id=eq.${id}`);
     } else {
       await db('program_assignments','POST',{user_id:currentUser.id,program_id:id,active:true,start_date:startDate});
     }
-    // Re-read from DB to confirm start_date was saved, then set local state
-    const saved = await db('program_assignments','GET',null,
-      `?user_id=eq.${currentUser.id}&program_id=eq.${id}&active=eq.true&select=start_date`);
-    console.log('Saved assignment:', saved, 'Expected start_date:', startDate);
-    _activeProgStartDate = saved?.[0]?.start_date || startDate;
-    console.log('_activeProgStartDate set to:', _activeProgStartDate);
 
-    // Clean up any schedule overrides that fall outside the new program window
+    // Clean up overrides tied to THIS program that now fall outside its window
     const prog = (_calPrograms||[]).find(p=>p.id===id);
-    if (prog?.weeks && _activeProgStartDate) {
-      const windowStart = new Date(_activeProgStartDate+'T00:00:00').getTime();
+    if (prog?.weeks) {
+      const windowStart = new Date(startDate+'T00:00:00').getTime();
       const windowEnd = windowStart + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
       try {
         const overrides = await db('workout_schedule_overrides','GET',null,
-          `?user_id=eq.${currentUser.id}&select=id,new_date,original_date`);
+          `?user_id=eq.${currentUser.id}&program_id=eq.${id}&select=id,new_date,original_date`);
         for (const ov of (overrides||[])) {
           const newDateMs = new Date(ov.new_date+'T00:00:00').getTime();
           const origDateMs = new Date(ov.original_date+'T00:00:00').getTime();
-          // Delete if BOTH the original and new date are outside the program window
+          // Delete if BOTH the original and new date are outside this program's window
           if ((origDateMs < windowStart || origDateMs >= windowEnd) &&
               (newDateMs < windowStart || newDateMs >= windowEnd)) {
             await db('workout_schedule_overrides','DELETE',null,`?id=eq.${ov.id}`);
           }
         }
-        console.log('Cleaned up out-of-window overrides');
       } catch(e) { console.warn('Override cleanup failed:', e); }
     }
 
     renderPrograms();
     await renderCalendar();
-    toast(`Program activated from ${_activeProgStartDate} ✓`);
+    toast(`${prog?.name||'Program'} activated from ${startDate} ✓`);
   }catch(e){toast('Could not activate');console.error(e);}
 }
 
-
-async function deactivateProgram(){
+async function deactivateOneProgram(assignmentId){
   try{
-    await db('program_assignments','PATCH',{active:false},`?user_id=eq.${currentUser.id}`);
-    renderPrograms(); toast('Program removed');
+    await db('program_assignments','PATCH',{active:false},`?id=eq.${assignmentId}`);
+    renderPrograms();
+    await renderCalendar();
+    toast('Program removed');
   }catch(e){toast('Error');console.error(e);}
 }
 
-function assignProgramToUser(userId, progId, userName){
-  if (!progId) {
-    confirmAssignProgram(userId, '', null);
-    return;
-  }
-  // Defer to let the select onchange event fully clear before opening modal
-  setTimeout(() => {
-    const prog = (_calPrograms||[]).find(p=>p.id===progId);
-    const progName = prog?.name || 'Program';
-    const displayName = userName || 'athlete';
-    document.getElementById('modal-title').textContent = `Assign ${progName}`;
+async function openAssignProgramPicker(userId, userName){
+  try{
+    const progs = (_calPrograms&&_calPrograms.length) ? _calPrograms : await db('programs','GET',null,'?select=*');
+    const seen = new Set();
+    const uniqueProgs = (progs||[]).filter(p=>{ if(seen.has(p.name))return false; seen.add(p.name); return true; });
+    const existing = await db('program_assignments','GET',null,`?user_id=eq.${userId}&active=eq.true&select=program_id`);
+    const activeIds = (existing||[]).map(a=>a.program_id);
+    document.getElementById('modal-title').textContent = `Add Program — ${userName}`;
     document.getElementById('modal-body').innerHTML = `
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
-        Assigning <strong>${progName}</strong> to <strong>${displayName}</strong>.
-        ${prog?.weeks ? `This is a <strong>${prog.weeks}-week</strong> program.` : ''}
-      </div>
-      <div class="field">
-        <label>Program Start Date</label>
-        <input id="assign-start-date" type="date" value="${todayStr()}"
-          style="font-size:16px;padding:10px;font-family:var(--font)">
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
-          Workouts will appear on ${displayName}'s calendar starting this date.
-        </div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px">Pick a program to add for ${userName}. This adds to any programs already active — it won't replace them.</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto">
+        ${uniqueProgs.map(p=>`
+          <button class="btn btn-white" style="justify-content:space-between;text-align:left;padding:10px 12px;opacity:${activeIds.includes(p.id)?'.5':'1'}"
+            onclick="openAssignStartDate('${userId}','${userName}','${p.id}')" ${activeIds.includes(p.id)?'disabled':''}>
+            <span>${p.name}</span>
+            <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">${activeIds.includes(p.id)?'✓ Active':`${p.weeks}wk · ${(p.schedule||[]).length}d/wk`}</span>
+          </button>`).join('')}
       </div>`;
-    document.getElementById('modal-footer').innerHTML = `
-      <button class="btn btn-ghost" onclick="closeModal();renderPrograms()">Cancel</button>
-      <button class="btn btn-primary" onclick="confirmAssignProgram('${userId}','${progId}',document.getElementById('assign-start-date')?.value)">Assign</button>`;
+    document.getElementById('modal-footer').innerHTML = `<button class="btn btn-ghost btn-full" onclick="closeModal()">Cancel</button>`;
     showModal();
-  }, 50);
+  }catch(e){toast('Could not load programs');console.error(e);}
+}
+
+function openAssignStartDate(userId, userName, progId){
+  const prog = (_calPrograms||[]).find(p=>p.id===progId);
+  const progName = prog?.name || 'Program';
+  document.getElementById('modal-title').textContent = `Assign ${progName}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      Assigning <strong>${progName}</strong> to <strong>${userName}</strong>.
+      ${prog?.weeks ? `This is a <strong>${prog.weeks}-week</strong> program.` : ''}
+    </div>
+    <div class="field">
+      <label>Program Start Date</label>
+      <input id="assign-start-date" type="date" value="${todayStr()}"
+        style="font-size:16px;padding:10px;font-family:var(--font)">
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
+        Workouts will appear on ${userName}'s calendar starting this date. This adds to any other active programs.
+      </div>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="confirmAssignProgram('${userId}','${progId}',document.getElementById('assign-start-date')?.value)">Assign</button>`;
+  showModal();
 }
 
 async function confirmAssignProgram(userId, progId, startDate){
   closeModal();
   try{
-    const existing=await db('program_assignments','GET',null,`?user_id=eq.${userId}&select=id`);
-    for(const a of(existing||[])){await db('program_assignments','PATCH',{active:false},`?id=eq.${a.id}`);}
     if(progId){
       const payload = {user_id:userId, program_id:progId, active:true};
       if (startDate) payload.start_date = startDate;
@@ -2896,14 +2949,14 @@ async function confirmAssignProgram(userId, progId, startDate){
       } else {
         await db('program_assignments','POST',payload);
       }
-      // Clean up overrides outside the new program window for this athlete
+      // Clean up overrides tied to THIS program outside its new window
       const prog = (_calPrograms||[]).find(p=>p.id===progId);
       if (prog?.weeks && startDate) {
         const windowStart = new Date(startDate+'T00:00:00').getTime();
         const windowEnd = windowStart + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
         try {
           const overrides = await db('workout_schedule_overrides','GET',null,
-            `?user_id=eq.${userId}&select=id,new_date,original_date`);
+            `?user_id=eq.${userId}&program_id=eq.${progId}&select=id,new_date,original_date`);
           for (const ov of (overrides||[])) {
             const newDateMs = new Date(ov.new_date+'T00:00:00').getTime();
             const origDateMs = new Date(ov.original_date+'T00:00:00').getTime();
@@ -2915,11 +2968,17 @@ async function confirmAssignProgram(userId, progId, startDate){
         } catch(e) { console.warn('Override cleanup failed:', e); }
       }
       toast(`Program assigned from ${startDate||'today'} ✓`);
-    } else {
-      toast('Program removed from athlete');
     }
     renderPrograms();
   }catch(e){toast('Assignment failed');console.error(e);}
+}
+
+async function removeAthleteProgram(assignmentId){
+  try{
+    await db('program_assignments','PATCH',{active:false},`?id=eq.${assignmentId}`);
+    toast('Program removed');
+    renderPrograms();
+  }catch(e){toast('Error');console.error(e);}
 }
 
 async function deleteProgram(id){
@@ -3500,7 +3559,7 @@ async function renderAthleteDetail(athlete, body) {
         <div class="athlete-avatar-lg">${athlete.username.slice(0,2).toUpperCase()}</div>
         <div class="athlete-detail-info">
           <h2>${athlete.username}</h2>
-          <div style="font-size:12.5px;color:var(--text-secondary)">${assigns?.[0]?'On a program':'No active program'}</div>
+          <div style="font-size:12.5px;color:var(--text-secondary)">${assigns?.length ? `On ${assigns.length} program${assigns.length!==1?'s':''}` : 'No active program'}</div>
         </div>
         <div style="display:flex;gap:16px;margin-left:auto">
           <div class="athlete-stat"><div class="athlete-stat-val">${w7}</div><div class="athlete-stat-label">This week</div></div>
@@ -3789,8 +3848,10 @@ function startWorkoutMode() {
 function exitWorkoutMode() {
   document.getElementById('workout-mode').classList.remove('show');
   releaseWakeLock();
-  const planned=getPlannedWorkout(_logDate);
-  document.getElementById('modal-title').textContent=planned?planned.name:'Log Workout';
+  const planned = _logDayName
+    ? getPlannedWorkouts(_logDate).find(p=>p.name===_logDayName) || getPlannedWorkout(_logDate)
+    : getPlannedWorkout(_logDate);
+  document.getElementById('modal-title').textContent=planned?planned.name:(_logDayName||'Log Workout');
   renderLogModal();
   showModal();
 }
@@ -3901,13 +3962,16 @@ function renderWorkoutMode() {
     document.getElementById('wm-body').innerHTML=`
       <div class="wm-ex-name">${cur.label}</div>
       <div class="wm-ex-meta" style="margin-bottom:20px">${secExs.length} exercise${secExs.length!==1?'s':''} · tap to complete</div>
-      <div style="font-size:13px;color:var(--text-secondary);line-height:2;margin-bottom:20px">${secExs.map(e=>e.name).join('<br>')}</div>
-      <div style="display:flex;justify-content:center">
-        <button onclick="wmToggleSection('${cur.section}')" style="width:110px;height:110px;border-radius:50%;border:3px solid ${secDone?'var(--lime)':'var(--border-strong)'};background:${secDone?'var(--lime-dim)':'none'};cursor:pointer;font-size:44px;color:${secDone?'var(--lime)':'var(--text-muted)'};transition:all .2s;display:flex;align-items:center;justify-content:center">
-          ${secDone?'✓':'○'}
-        </button>
-      </div>
-      ${secDone?'<div style="text-align:center;margin-top:16px;font-size:14px;font-weight:800;color:var(--lime);text-transform:uppercase;letter-spacing:1px">Done!</div>':''}`;
+      <div style="margin-bottom:20px">${secExs.map((e,idx)=>{
+        const gi = _logExercises.indexOf(e);
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border:1.5px solid ${e.done?'var(--lime)':'var(--border)'};border-radius:var(--radius);margin-bottom:8px;cursor:pointer;transition:all .15s" onclick="wmToggleSimple(${gi})">
+          <div style="width:36px;height:36px;border-radius:50%;border:2px solid ${e.done?'var(--lime)':'var(--border-strong)'};background:${e.done?'var(--lime)':'none'};display:flex;align-items:center;justify-content:center;font-size:16px;color:${e.done?'#0D0D0F':'var(--text-muted)'};flex-shrink:0;font-weight:900">${e.done?'✓':''}</div>
+          <div style="font-size:14px;color:${e.done?'var(--lime)':'var(--text-secondary)'};font-weight:${e.done?'700':'500'}">${e.name}</div>
+        </div>`;
+      }).join('')}</div>
+      <button onclick="wmToggleSection('${cur.section}')" style="width:100%;padding:14px;border-radius:var(--radius);border:2px solid ${secDone?'var(--lime)':'var(--orange)'};background:${secDone?'var(--lime-dim)':'var(--orange-dim)'};cursor:pointer;font-size:15px;font-weight:800;color:${secDone?'var(--lime)':'var(--orange)'};transition:all .2s;text-transform:uppercase;letter-spacing:1px">
+        ${secDone?'✓ All Done — tap to undo':'✓ Mark All Done'}
+      </button>`;
   } else {
     const globalIdx=_logExercises.indexOf(cur.ex);
     document.getElementById('wm-body').innerHTML=cur.ex.type==='cardio'?buildWMCardio(cur.ex,globalIdx):buildWMStrength(cur.ex,globalIdx);
@@ -4103,6 +4167,7 @@ function wmNavigate(dir){
   _wmCurrentIdx=newIdx;
   renderWorkoutMode();
   document.getElementById('wm-body').scrollTop=0;
+  initSetSwipe();
 }
 
 function syncWMNotes(val) {
@@ -4122,9 +4187,87 @@ function wmToggleSet(ei,si){
   if(row){const inps=row.querySelectorAll('.wm-input');if(inps[0])_logExercises[ei].sets[si].w=inps[0].value;if(inps[1])_logExercises[ei].sets[si].r=inps[1].value;}
   const s=_logExercises[ei]?.sets?.[si]; if(!s) return;
   s.done=!s.done;
-  
+  // Auto-fill subsequent empty sets with this set's weight and reps
+  if (s.done && (s.w || s.r)) {
+    for (let j = si+1; j < _logExercises[ei].sets.length; j++) {
+      const next = _logExercises[ei].sets[j];
+      if (!next.done && !next.w && !next.r) {
+        next.w = s.w;
+        next.r = s.r;
+      }
+    }
+  }
   renderWorkoutMode();
 }
+
+// ── SWIPE TO DONE on set rows ──
+let _swipeStartX = 0, _swipeStartY = 0, _swipeRow = null, _swipeEi = null, _swipeSi = null;
+
+function initSetSwipe() {
+  const body = document.getElementById('wm-body');
+  if (!body || body.dataset.swipeInit) return;
+  body.dataset.swipeInit = '1';
+
+  body.addEventListener('touchstart', e => {
+    const row = e.target.closest('.wm-set-row');
+    if (!row || row.classList.contains('done-set')) { _swipeRow = null; return; }
+    _swipeStartX = e.touches[0].clientX;
+    _swipeStartY = e.touches[0].clientY;
+    _swipeRow = row;
+    const idMatch = row.id?.match(/wm-set-(\d+)/);
+    _swipeSi = idMatch ? parseInt(idMatch[1]) : null;
+    // Find the exercise index from the current nav item
+    const navItems = [];
+    const exs = _logExercises;
+    const warmupExs = exs.filter(e=>e.section==='warmup');
+    const mainExs = exs.filter(e=>e.section==='main'||!e.section);
+    const cooldownExs = exs.filter(e=>e.section==='cooldown');
+    if (warmupExs.length) navItems.push({isSection:true});
+    mainExs.forEach(ex => navItems.push({ex}));
+    if (cooldownExs.length) navItems.push({isSection:true});
+    navItems.push({isWrapUp:true});
+    const cur = navItems[_wmCurrentIdx];
+    if (cur?.ex) _swipeEi = _logExercises.indexOf(cur.ex);
+    else _swipeEi = null;
+  }, {passive: true});
+
+  body.addEventListener('touchmove', e => {
+    if (!_swipeRow || _swipeEi === null || _swipeSi === null) return;
+    const dx = e.touches[0].clientX - _swipeStartX;
+    const dy = e.touches[0].clientY - _swipeStartY;
+    // Only track horizontal swipes (not vertical scrolling)
+    if (Math.abs(dy) > Math.abs(dx)) { _swipeRow = null; return; }
+    if (dx > 10) {
+      e.preventDefault();
+      // Show green indicator proportional to swipe distance
+      let indicator = _swipeRow.querySelector('.swipe-indicator');
+      if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.className = 'swipe-indicator';
+        indicator.textContent = '✓';
+        _swipeRow.prepend(indicator);
+      }
+      indicator.style.width = Math.min(dx, 80) + 'px';
+    }
+  }, {passive: false});
+
+  body.addEventListener('touchend', e => {
+    if (!_swipeRow || _swipeEi === null || _swipeSi === null) return;
+    const indicator = _swipeRow.querySelector('.swipe-indicator');
+    const dx = indicator ? parseInt(indicator.style.width) : 0;
+    if (dx >= 60) {
+      // Swipe was far enough — toggle the set
+      wmToggleSet(_swipeEi, _swipeSi);
+    } else if (indicator) {
+      indicator.style.width = '0';
+      setTimeout(() => indicator.remove(), 150);
+    }
+    _swipeRow = null;
+    _swipeEi = null;
+    _swipeSi = null;
+  }, {passive: true});
+}
+
 function wmAddSet(ei){
   const last=_logExercises[ei].sets.slice(-1)[0];
   _logExercises[ei].sets.push({w:last?.w||'',r:'',bw:last?.bw||false,done:false});
@@ -4354,7 +4497,6 @@ function initTouchDrag() {
 function getCellDots(ds) {
   const logs = _calWorkouts[ds] || [];
   const assigned = _calAssigned[ds] || [];
-  const planned = getPlannedWorkout(ds);
   let html = '';
   if (logs.length > 0) {
     logs.forEach(w => {
@@ -5124,49 +5266,53 @@ function closeCompletion() {
 // PROGRAM PROGRESS INDICATOR
 // ═══════════════════════════════════════════════════
 async function updateProgProgress() {
+  const container = document.getElementById('prog-progress-container');
+  if (!container) return;
   try {
     const assigns = await db('program_assignments','GET',null,
-      `?user_id=eq.${currentUser.id}&active=eq.true&select=program_id,created_at,start_date`);
-    const assign = assigns?.[0];
-    if (!assign) { document.getElementById('prog-progress-label').style.display='none'; return; }
+      `?user_id=eq.${currentUser.id}&active=eq.true&select=id,program_id,created_at,start_date`);
+    if (!assigns || !assigns.length) { container.innerHTML = ''; return; }
 
-    const prog = _calPrograms.find(p=>p.id===assign.program_id) ||
-      (await db('programs','GET',null,`?id=eq.${assign.program_id}&select=*`))?.[0];
-    if (!prog) return;
+    // Build one mini progress card per active program
+    const cardsHtml = await Promise.all(assigns.map(async (assign) => {
+      const prog = _calPrograms.find(p=>p.id===assign.program_id) ||
+        (await db('programs','GET',null,`?id=eq.${assign.program_id}&select=*`))?.[0];
+      if (!prog) return '';
 
-    const daysPerWeek = (prog.schedule||[]).length;
-    const totalWorkouts = daysPerWeek * (prog.weeks||1);
+      const daysPerWeek = (prog.schedule||[]).length;
+      const totalWorkouts = daysPerWeek * (prog.weeks||1);
 
-    // Use start_date if set, otherwise fall back to created_at, then today
-    const startDate = assign.start_date ||
-      (assign.created_at ? assign.created_at.slice(0,10) : todayStr());
+      const startDate = assign.start_date ||
+        (assign.created_at ? assign.created_at.slice(0,10) : todayStr());
 
-    // Compute end date
-    const endDate = (() => {
-      const d = new Date(startDate+'T00:00:00');
-      d.setDate(d.getDate() + (prog.weeks||1) * 7);
-      return d.toISOString().slice(0,10);
-    })();
+      const endDate = (() => {
+        const d = new Date(startDate+'T00:00:00');
+        d.setDate(d.getDate() + (prog.weeks||1) * 7);
+        return d.toISOString().slice(0,10);
+      })();
 
-    // Count workouts logged between start and end dates
-    const logged = await db('workouts','GET',null,
-      `?user_id=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=id,day_name`);
-    
-    // Only count workouts that match a scheduled day name
-    const scheduleNames = (prog.schedule||[]).map(d=>d.name).filter(Boolean);
-    const matchedCount = scheduleNames.length > 0
-      ? (logged||[]).filter(w => scheduleNames.includes(w.day_name)).length
-      : (logged||[]).length;
-    
-    const completedWorkouts = Math.min(totalWorkouts, matchedCount);
-    const pct = totalWorkouts > 0 ? Math.round((completedWorkouts/totalWorkouts)*100) : 0;
+      const logged = await db('workouts','GET',null,
+        `?user_id=eq.${currentUser.id}&date=gte.${startDate}&date=lte.${endDate}&select=id,day_name`);
 
-    const el = document.getElementById('prog-progress-label');
-    document.getElementById('prog-progress-name').textContent = prog.name;
-    document.getElementById('prog-progress-bar').style.width = pct+'%';
-    document.getElementById('prog-progress-text').textContent =
-      `${completedWorkouts} of ${totalWorkouts} workouts · ${pct}%`;
-    el.style.display = 'block';
+      const scheduleNames = (prog.schedule||[]).map(d=>d.name).filter(Boolean);
+      const matchedCount = scheduleNames.length > 0
+        ? (logged||[]).filter(w => scheduleNames.includes(w.day_name)).length
+        : (logged||[]).length;
+
+      const completedWorkouts = Math.min(totalWorkouts, matchedCount);
+      const pct = totalWorkouts > 0 ? Math.round((completedWorkouts/totalWorkouts)*100) : 0;
+
+      return `<div style="font-size:11.5px;color:var(--text-secondary);margin-bottom:6px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)">
+        <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:3px">Active Program</div>
+        <div style="font-weight:700;color:var(--text-primary);margin-bottom:5px;font-size:12px">${prog.name}</div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px">
+          <div style="height:100%;width:${pct}%;background:var(--orange);border-radius:2px;transition:width .3s;box-shadow:0 0 6px var(--orange)"></div>
+        </div>
+        <div style="font-size:10.5px;color:var(--text-muted)">${completedWorkouts} of ${totalWorkouts} workouts · ${pct}%</div>
+      </div>`;
+    }));
+
+    container.innerHTML = cardsHtml.join('');
   } catch(e) { console.error('Progress indicator error',e); }
 }
 
@@ -5672,8 +5818,7 @@ let _athleteList = []; // [{id, username, color}]
 let _athCalWorkouts = {};   // athlete's logged workouts
 let _athCalAssigned = {};   // athlete's assigned workouts
 let _athCalPrograms = [];
-let _athActiveProgId = null;
-let _athProgStartDate = null;
+let _athActiveProgAssignments = []; // [{id, program_id, start_date}] — supports multiple simultaneous programs
 let _athCoachNotes = {};    // {date: noteText} pre-log coach notes for this athlete
 
 function setCalMode(mode) {
@@ -5753,9 +5898,7 @@ async function renderAthleteCalendar() {
     _athCalAssigned = {};
     (assigned||[]).forEach(a => { if(!_athCalAssigned[a.date])_athCalAssigned[a.date]=[]; _athCalAssigned[a.date].push(a); });
     _athCalPrograms = progs||[];
-    const activeAssign = (assigns||[]).find(a=>a.active);
-    _athActiveProgId = activeAssign?.program_id||null;
-    _athProgStartDate = activeAssign?.start_date||null;
+    _athActiveProgAssignments = (assigns||[]).filter(a=>a.active).map(a=>({id:a.id, program_id:a.program_id, start_date:a.start_date||null}));
     _athCoachNotes = {};
     (coachNotes||[]).forEach(n => { _athCoachNotes[n.date] = {id:n.id, note:n.note}; });
   } catch(e) { console.error('Athlete calendar load error',e); }
@@ -5764,21 +5907,34 @@ async function renderAthleteCalendar() {
   renderAthleteDayPanel(selectedDate);
 }
 
-function getAthletePlannedWorkout(ds) {
-  if (!_athActiveProgId) return null;
-  const prog = _athCalPrograms.find(p=>p.id===_athActiveProgId);
-  if (!prog?.schedule) return null;
-
-  // Enforce program week limit for athlete
-  if (_athProgStartDate && prog.weeks) {
-    const startMs = new Date(_athProgStartDate+'T00:00:00').getTime();
-    const endMs = startMs + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
-    const dsMs = new Date(ds+'T00:00:00').getTime();
-    if (dsMs < startMs || dsMs >= endMs) return null;
-  }
-
+function getAthletePlannedWorkouts(ds) {
+  // Returns array — supports multiple simultaneously active programs for this athlete
+  if (!_athActiveProgAssignments.length) return [];
   const dow = new Date(ds+'T12:00:00').getDay();
-  return prog.schedule.find(s=>parseInt(s.dow)===dow)||null;
+  const results = [];
+
+  _athActiveProgAssignments.forEach(assign => {
+    const prog = _athCalPrograms.find(p=>p.id===assign.program_id);
+    if (!prog?.schedule) return;
+
+    // Enforce program week limit
+    if (assign.start_date && prog.weeks) {
+      const startMs = new Date(assign.start_date+'T00:00:00').getTime();
+      const endMs = startMs + (prog.weeks * 7 * 24 * 60 * 60 * 1000);
+      const dsMs = new Date(ds+'T00:00:00').getTime();
+      if (dsMs < startMs || dsMs >= endMs) return;
+    }
+
+    const planned = prog.schedule.find(s=>parseInt(s.dow)===dow);
+    if (planned) results.push({...planned, programId:prog.id, programName:prog.name});
+  });
+
+  return results;
+}
+
+function getAthletePlannedWorkout(ds) {
+  // Legacy single accessor — returns first planned workout
+  return getAthletePlannedWorkouts(ds)[0]||null;
 }
 
 function buildAthleteCalGrid() {
@@ -5801,7 +5957,7 @@ function buildAthleteCalGrid() {
     const isSel = ds===selectedDate;
     const logs = _athCalWorkouts[ds]||[];
     const assigned = _athCalAssigned[ds]||[];
-    const planned = getAthletePlannedWorkout(ds);
+    const plannedList = getAthletePlannedWorkouts(ds);
     const hasNote = !!_athCoachNotes[ds];
     // Dot logic same as personal calendar
     let dot = '';
@@ -5812,8 +5968,8 @@ function buildAthleteCalGrid() {
       dot = `<span style="display:block;font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;margin-bottom:2px;background:${full?color.dim:color.dim};color:${color.hex};border:1px solid ${color.hex}40">${full?'✓':'◑'} ${logs[0].day_name||'Workout'}</span>`;
     } else if (assigned.length) {
       dot = `<span style="display:block;font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;margin-bottom:2px;background:var(--purple-light);color:var(--purple)">📤 ${assigned[0].workout_name}</span>`;
-    } else if (planned) {
-      dot = `<span style="display:block;font-size:10px;border-radius:3px;padding:1px 5px;margin-bottom:2px;background:${color.dim};color:${color.hex}">· ${planned.name}</span>`;
+    } else if (plannedList.length) {
+      dot = plannedList.map(p=>`<span style="display:block;font-size:10px;border-radius:3px;padding:1px 5px;margin-bottom:2px;background:${color.dim};color:${color.hex}">· ${p.name}</span>`).join('');
     }
     const noteIndicator = hasNote ? `<span style="position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--purple)"></span>` : '';
     html+=`<div class="cal-cell ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectAthleteDay('${ds}')" style="position:relative">
@@ -5842,11 +5998,11 @@ function buildAthleteWeekStrip() {
     const isSel = ds===selectedDate;
     const logs = _athCalWorkouts[ds]||[];
     const assigned = _athCalAssigned[ds]||[];
-    const planned = getAthletePlannedWorkout(ds);
+    const plannedList = getAthletePlannedWorkouts(ds);
     let dotClass = 'empty', dotColor = 'transparent';
     if (logs.length) dotColor = color.hex;
     else if (assigned.length) dotColor = 'var(--purple)';
-    else if (planned) dotColor = color.hex+'80';
+    else if (plannedList.length) dotColor = color.hex+'80';
     html += `<div class="week-strip-day ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectAthleteDay('${ds}')">
       <div class="week-strip-dow">${DAYS_SHORT[i]}</div>
       <div class="week-strip-num">${d.getDate()}</div>
@@ -5871,7 +6027,7 @@ async function renderAthleteDayPanel(ds) {
   const label = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   const logs = _athCalWorkouts[ds]||[];
   const assigned = _athCalAssigned[ds]||[];
-  const planned = getAthletePlannedWorkout(ds);
+  const plannedList = getAthletePlannedWorkouts(ds);
   const existingNote = _athCoachNotes[ds];
   let bodyHtml = '';
 
@@ -5927,21 +6083,23 @@ async function renderAthleteDayPanel(ds) {
     </div>`;
   });
 
-  // Planned (not yet logged)
-  if (planned && !logs.length) {
-    const mainExs = planned.exercises||[];
-    const exPreview = mainExs.slice(0,4).map(e=>{
-      const n=typeof e==='string'?e:e.name;
-      const s=typeof e==='object'&&e.sets?e.sets:'';
-      const r=typeof e==='object'&&e.reps?e.reps:'';
-      return `<div style="font-size:12px;color:var(--text-secondary);padding:2px 0">${n}${s&&r?` <span style="font-family:var(--mono);color:var(--text-muted);font-size:11px">${s}×${r}</span>`:''}</div>`;
-    }).join('');
-    bodyHtml += `<div class="workout-entry" style="border-color:${ath.color.hex}40;background:${ath.color.dim}">
-      <div class="workout-entry-name" style="color:${ath.color.hex};margin-bottom:6px">${planned.name}</div>
-      ${exPreview}
-      ${mainExs.length>4?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px">+${mainExs.length-4} more</div>`:''}
-      ${planned.coachNotes?`<div style="background:var(--purple-light);border:1px solid #C4B5FD;border-radius:5px;padding:6px 9px;margin-top:6px;font-size:12px;color:var(--purple)">📝 ${planned.coachNotes}</div>`:''}
-    </div>`;
+  // Planned (not yet logged) — supports multiple simultaneously active programs
+  if (!logs.length) {
+    plannedList.forEach(planned => {
+      const mainExs = planned.exercises||[];
+      const exPreview = mainExs.slice(0,4).map(e=>{
+        const n=typeof e==='string'?e:e.name;
+        const s=typeof e==='object'&&e.sets?e.sets:'';
+        const r=typeof e==='object'&&e.reps?e.reps:'';
+        return `<div style="font-size:12px;color:var(--text-secondary);padding:2px 0">${n}${s&&r?` <span style="font-family:var(--mono);color:var(--text-muted);font-size:11px">${s}×${r}</span>`:''}</div>`;
+      }).join('');
+      bodyHtml += `<div class="workout-entry" style="border-color:${ath.color.hex}40;background:${ath.color.dim}">
+        <div class="workout-entry-name" style="color:${ath.color.hex};margin-bottom:6px">${planned.name}</div>
+        ${exPreview}
+        ${mainExs.length>4?`<div style="font-size:11px;color:var(--text-muted);margin-top:3px">+${mainExs.length-4} more</div>`:''}
+        ${planned.coachNotes?`<div style="background:var(--purple-light);border:1px solid #C4B5FD;border-radius:5px;padding:6px 9px;margin-top:6px;font-size:12px;color:var(--purple)">📝 ${planned.coachNotes}</div>`:''}
+      </div>`;
+    });
   }
 
   if (!bodyHtml) bodyHtml = `<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:12.5px">No workout scheduled</div>`;
@@ -6440,7 +6598,7 @@ function renderWorkoutBuilder() {
 function builderSetGoal(val, btn) {
   _builderState.goal = val;
   _builderState.focus = [];
-  _builderState.equipment = null;
+  _builderState.equipment = [];
   _builderState.duration = null;
   document.querySelectorAll('#builder-goal-step .builder-option').forEach(b=>b.classList.remove('selected'));
   btn.classList.add('selected');
