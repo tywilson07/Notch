@@ -4838,20 +4838,31 @@ function renderHelp() {
         </div>
       </div>
       <div class="help-card">
-        <div class="help-card-title">📅 The week strip</div>
+        <div class="help-card-title">📅 Month &amp; Week views</div>
         <div class="help-card-body">
+          The calendar has a <strong>Month / Week</strong> toggle at the top. Month view shows the full month grid. Week view shows 7 day columns for the current week with workout names visible inside each day — easier to read on mobile. The ‹ › arrows shift by one week in Week view or one month in Month view.
+          <br><br>
           The 7-day row above the monthly grid shows your <strong>current week at a glance</strong>. Each day shows a colored dot for its status. Tap any day to jump to it in the day panel.
         </div>
       </div>
       <div class="help-card">
-        <div class="help-card-title">↕ Moving workouts to different days</div>
+        <div class="help-card-title">↕ Moving &amp; 📋 Copying workouts</div>
         <div class="help-card-body">
-          Both planned (orange, not yet logged) and completed (green/amber) workouts can be moved to different days.
+          Both planned (orange) and logged (green) workouts have <strong>↕ Move</strong> and <strong>📋 Copy</strong> buttons in the day panel.
           <br><br>
-          <strong>Moving a planned workout:</strong> Tap the day, then tap <strong>↕ Move</strong> on the planned workout card. Pick a new date. If you change your mind, tap Move again and hit <strong>Undo Move</strong>. You can also <strong>drag the orange dot</strong> on the calendar to a new day on desktop.
+          <strong>Moving:</strong> Tap ↕ Move, pick a new date. The workout moves to that day. For planned workouts you can also drag the orange dot on desktop. Tap Move again and hit Undo Move to reverse it.
           <br><br>
-          <strong>Moving a completed workout:</strong> Tap the day, then tap <strong>↕ Move</strong> on the workout entry. Pick the new date. All sets, notes, feedback, and coach notes travel with it. You can also drag the green/amber dot on desktop.
-          <div class="help-tip"><span>💡</span><div>Move planned workouts before the week starts to plan around appointments — drag or tap Move and your calendar stays accurate.</div></div>
+          <strong>Copying:</strong> Tap 📋 Copy, pick a future date. A blank copy of the workout appears on that date with the same exercises and structure — but weights and reps start empty so you fill in your new numbers. Great for repeating workouts between programs or building your own week.
+          <div class="help-tip"><span>💡</span><div>Copy is especially useful when a program ends and you want to keep training the same workouts on your own for a few weeks before the next program.</div></div>
+        </div>
+      </div>
+      <div class="help-card">
+        <div class="help-card-title">🔍 Exercise preview in day panel</div>
+        <div class="help-card-body">
+          Tap any day on the calendar to see the planned workout in the day panel. In the <strong>Main Workout</strong> section, each exercise has a small <strong>▼</strong> arrow — tap it to expand and see:
+          <br><br>
+          <strong>Target sets and reps</strong>, exercise type (Weight/Bodyweight/Assisted), numbered set circles, and <strong>form cues</strong> with coaching tips for proper technique. Tap again to collapse. Preview your entire workout before heading to the gym.
+          <div class="help-tip"><span>💡</span><div>If an exercise shows "Tap to load form cues" instead of cues, tap it — the AI will generate them on the spot. They're saved permanently so they'll be there next time.</div></div>
         </div>
       </div>
       <div class="help-card">
@@ -4986,7 +4997,9 @@ function renderHelp() {
             <li><strong>Exercise pills</strong> — tap any pill to jump to that exercise. Warm-Up and Cool Down each appear as a single pill</li>
             <li><strong>Swipe left / right</strong> — swipe anywhere on the exercise to move between exercises. Faster than tapping Prev/Next mid-set.</li>
             <li><strong>📋 Form Cues</strong> — tap the collapsible "Form Cues" line under any exercise name for 3-4 key coaching points. Built-in for all 65 preset exercises. For custom exercises, AI generates them automatically the first time you tap.</li>
-            <li><strong>Warm-Up & Cool Down</strong> — one large circle button marks the whole section done at once</li>
+            <li><strong>Warm-Up & Cool Down</strong> — each exercise has its own tap-to-check row, plus a full-width <strong>"Mark All Done"</strong> button at the bottom to check everything at once</li>
+            <li><strong>Swipe right to check done</strong> — on any set row, swipe right with your finger to mark it done. A green ✓ slides in from the left. Faster than tapping the button with chalky hands.</li>
+            <li><strong>Auto-fill sets</strong> — when you check Set 1 as done, Sets 2 and 3 automatically pre-fill with the same weight and reps. Just tap ✓ on each remaining set. If you need to adjust, change the number before checking.</li>
             <li><strong>Main Workout</strong> — large inputs with <strong>ghost progression numbers</strong> showing your suggested next weight and reps based on last session</li>
             <li><strong>📝 Notes panel</strong> — open by default below the exercise. Shows your previous session notes as a reminder and lets you type new ones. Tap 📝 in the footer to hide it.</li>
             <li><strong>🔢 Plate Calculator</strong> (footer) — enter a target weight, pick your bar, and see exactly which plates to load per side</li>
@@ -5179,7 +5192,12 @@ function renderHelp() {
       <div class="help-card">
         <div class="help-card-title">📋 Assigning programs to athletes</div>
         <div class="help-card-body">
-          In the <strong>Programs</strong> tab, a gold panel shows "Assign Programs to Athletes". Use the dropdown next to each athlete to select their program. Their calendar updates immediately.
+          In the <strong>Programs</strong> tab, a gold panel shows each athlete with their active programs as removable chips. Tap <strong>+ Add Program</strong> to assign a new program — pick the program, set a start date, and it's added alongside any existing programs.
+          <br><br>
+          Athletes can run <strong>multiple programs at once</strong> — for example, a 3-day strength program and a 2-day running program. Each program tracks its own start date and week window independently. Both programs' workouts show as separate cards on the calendar.
+          <br><br>
+          Tap the <strong>✕</strong> on any chip to remove just that program without affecting the others.
+          <div class="help-tip"><span>💡</span><div>Athletes can also activate programs themselves from the Programs page — activation is additive, so they can stack programs too.</div></div>
         </div>
       </div>
 
@@ -5248,9 +5266,9 @@ function renderHelp() {
         <div class="help-card-title">📋 How to use it</div>
         <div class="help-card-body">
           <div style="display:flex;flex-direction:column;gap:0">
-            <div class="help-step"><div class="help-step-num">1</div><div class="help-step-text"><strong>Goal</strong> — Strength, Cardio, Mobility, or Full Body</div></div>
-            <div class="help-step"><div class="help-step-num">2</div><div class="help-step-text"><strong>Muscle group(s)</strong> — tap to select up to 3 muscle groups. They toggle on and off — tap Chest, then Back to get a Chest + Back workout. Your selection is shown below the step title. The more groups you pick, the more the exercises are distributed evenly across them.</div></div>
-            <div class="help-step"><div class="help-step-num">3</div><div class="help-step-text"><strong>Equipment</strong> — Full Gym, Dumbbells Only, Bodyweight Only, or Bands. The workout only includes exercises matching your equipment.</div></div>
+            <div class="help-step"><div class="help-step-num">1</div><div class="help-step-text"><strong>Goal</strong> — Strength (heavy, 3-5 reps), Hypertrophy (moderate, 8-12 reps), Cardio, Mobility, or Full Body (skips muscle group selection, hits everything in one session)</div></div>
+            <div class="help-step"><div class="help-step-num">2</div><div class="help-step-text"><strong>Muscle group(s)</strong> — tap to select up to 3. They toggle on and off. Full Body skips this step entirely and auto-selects all groups.</div></div>
+            <div class="help-step"><div class="help-step-num">3</div><div class="help-step-text"><strong>Equipment</strong> — select one or more. Full Gym is single-select (includes everything). Dumbbells, Bodyweight, Bands, and Barbell can be combined — great for home gyms. The workout only uses exercises matching your available equipment.</div></div>
             <div class="help-step"><div class="help-step-num">4</div><div class="help-step-text"><strong>Time</strong> — 20, 30, 45, or 60 minutes. Exercise count and sets are scaled to fit.</div></div>
           </div>
           Tap <strong>⚡ Generate My Workout</strong> — a complete structured workout appears. Preview it, then tap <strong>📋 Log This Workout</strong> to load it straight into today's log.
@@ -5275,7 +5293,7 @@ function renderHelp() {
             <li>💡 <strong>Pull down to refresh.</strong> On mobile, pull down from the top of any view and release to reload the latest data — same gesture as most native apps.</li>
             <li>💡 <strong>Use the Workout Builder on unplanned training days.</strong> No program? No problem — pick your goal, equipment, and time and get a complete workout in seconds.</li>
             <li>💡 <strong>Always write notes after a workout.</strong> Even one sentence — "back was tight" or "felt strong, add 5lb." They appear as a reminder next time you do the same session.</li>
-            <li>💡 <strong>Use ⚡ Workout Mode at the gym.</strong> The log modal is for setup. Workout Mode is what you use between sets — bigger inputs, screen stays on, and you can swipe between exercises.</li>
+            <li>💡 <strong>Use ⚡ Workout Mode at the gym.</strong> The log modal is for setup. Workout Mode is what you use between sets — bigger inputs, screen stays on, swipe between exercises, and swipe right on any set row to mark it done.</li>
             <li>💡 <strong>Use autocomplete for exercise names.</strong> Picking from the suggestion list keeps your history consistent and makes progress charts much more accurate.</li>
             <li>💡 <strong>Don't stress about incomplete sessions.</strong> Save even if you didn't finish. An amber dot is still progress. You can edit any logged workout by tapping the day on the calendar.</li>
             <li>💡 <strong>Cardio exercises are auto-detected.</strong> Any exercise with "run", "row", "bike", "swim", or "cardio" in the name switches automatically to distance/pace/duration logging.</li>
