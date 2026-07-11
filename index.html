@@ -1581,7 +1581,7 @@ async function renderDayPanel(ds) {
     const cooldown = planned.cooldown  || [];
     const coachNotes = planned.coachNotes || '';
 
-    const fmtEx = ex => {
+    const fmtExCollapsed = ex => {
       const name = typeof ex === 'string' ? ex : (ex.name||'');
       const sets = typeof ex === 'object' && ex.sets ? ex.sets : '';
       const reps = typeof ex === 'object' && ex.reps ? ex.reps : '';
@@ -1589,22 +1589,52 @@ async function renderDayPanel(ds) {
       return `<div style="display:flex;align-items:center;padding:2px 0">${name}${target}</div>`;
     };
 
-    const sectionHtml = (label, emoji, color, bg, border, items) => items.length ? `
+    const fmtExExpandable = (ex, section, idx) => {
+      const name = typeof ex === 'string' ? ex : (ex.name||'');
+      const sets = typeof ex === 'object' && ex.sets ? ex.sets : '';
+      const reps = typeof ex === 'object' && ex.reps ? ex.reps : '';
+      const setType = typeof ex === 'object' ? (ex.setType||'weight') : 'weight';
+      const target = (sets && reps) ? `${sets}×${reps}` : '';
+      const typeLabel = setType === 'bodyweight' ? 'Bodyweight' : setType === 'assisted' ? 'Assisted' : '';
+      const cues = getFormCues(name);
+      const uid = `prev-ex-${section}-${idx}`;
+
+      return `<div style="border-bottom:1px solid var(--border);padding:6px 0">
+        <div onclick="document.getElementById('${uid}').style.display=document.getElementById('${uid}').style.display==='none'?'block':'none';event.stopPropagation()"
+          style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;cursor:pointer">
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${name}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${target?`<span style="font-family:var(--mono);color:var(--orange);font-size:12px;font-weight:700">${target}</span>`:''}
+            <span style="font-size:10px;color:var(--text-muted)">▼</span>
+          </div>
+        </div>
+        <div id="${uid}" style="display:none;padding:6px 0 4px;margin-left:8px;border-left:2px solid var(--orange-mid);padding-left:10px">
+          ${target?`<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:4px">Target: <strong>${target}</strong>${typeLabel?' · '+typeLabel:''}</div>`:''}
+          ${sets?`<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Sets: ${Array.from({length:parseInt(sets)||1},(_,i)=>`<span style="display:inline-block;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border);text-align:center;line-height:18px;font-size:9px;margin-right:3px;font-weight:700">${i+1}</span>`).join('')}</div>`:''}
+          ${cues?.length?`<div style="margin-top:4px">${cues.slice(0,3).map(c=>`<div style="font-size:11px;color:var(--text-secondary);padding:3px 0;display:flex;align-items:flex-start;gap:4px"><span style="color:var(--orange);flex-shrink:0">•</span>${c}</div>`).join('')}</div>`:''}
+          ${!cues?.length&&section==='main'?`<div style="font-size:10.5px;color:var(--text-muted);font-style:italic">Tap to expand in workout mode for form cues</div>`:''}
+        </div>
+      </div>`;
+    };
+
+    const sectionExpandable = (label, emoji, color, bg, border, items, section) => items.length ? `
       <div style="background:${bg};border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid ${border}">
         <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:${color};margin-bottom:6px">${emoji} ${label}</div>
-        <div style="font-size:12.5px;color:var(--gray-700);line-height:1.7">${items.map(fmtEx).join('')}</div>
+        ${section==='main' ? items.map((ex,i)=>fmtExExpandable(ex,section,i)).join('') : `<div style="font-size:12.5px;color:var(--text-secondary);line-height:1.7">${items.map(fmtExCollapsed).join('')}</div>`}
       </div>` : '';
 
-    bodyHtml+=`<div class="workout-entry" onclick="openLogModal('${ds}','${planned.name}')" style="border-color:var(--orange);background:var(--orange-dim);padding:0;overflow:hidden;cursor:pointer" title="Tap to log this workout">
+    bodyHtml+=`<div class="workout-entry" style="border-color:var(--orange);background:var(--orange-dim);padding:0;overflow:hidden">
       <div style="padding:10px 12px 8px;border-bottom:1px solid var(--orange-mid);display:flex;align-items:center;justify-content:space-between">
         <div class="workout-entry-name" style="color:var(--orange)">${planned.name}${planned.movedFrom?` <span style="font-size:10px;font-weight:600;color:var(--text-muted)">(moved)</span>`:''}</div>
-        <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openMovePlannedWorkout('${ds}','${planned.name}','${planned.overrideId||''}')">↕ Move</button>
-        <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openCopyPlannedWorkout('${ds}','${planned.name}')">📋 Copy</button>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openMovePlannedWorkout('${ds}','${planned.name}','${planned.overrideId||''}')">↕ Move</button>
+          <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation();openCopyPlannedWorkout('${ds}','${planned.name}')">📋 Copy</button>
+        </div>
       </div>
       <div style="padding:10px 12px">
-        ${sectionHtml('Warm-Up','🔥','#D97706','rgba(251,191,36,.08)','rgba(251,191,36,.2)',warmup)}
-        ${sectionHtml('Main Workout','💪','var(--orange)','rgba(255,92,0,.08)','rgba(255,92,0,.2)',mainExs)}
-        ${sectionHtml('Cool Down','🧘','var(--lime)','rgba(170,255,0,.08)','rgba(170,255,0,.2)',cooldown)}
+        ${sectionExpandable('Warm-Up','🔥','#D97706','rgba(251,191,36,.08)','rgba(251,191,36,.2)',warmup,'warmup')}
+        ${sectionExpandable('Main Workout','💪','var(--orange)','rgba(255,92,0,.08)','rgba(255,92,0,.2)',mainExs,'main')}
+        ${sectionExpandable('Cool Down','🧘','var(--lime)','rgba(170,255,0,.08)','rgba(170,255,0,.2)',cooldown,'cooldown')}
         ${!warmup.length&&!mainExs.length&&!cooldown.length?`<div style="font-size:12.5px;color:var(--text-muted)">No exercises added yet</div>`:''}
         ${coachNotes?`<div style="background:var(--purple-light);border:1px solid #C4B5FD;border-radius:6px;padding:8px 10px;margin-top:6px">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);margin-bottom:3px">📝 Coach Notes</div>
@@ -1612,7 +1642,7 @@ async function renderDayPanel(ds) {
         </div>`:''}
       </div>
       <div style="padding:0 12px 12px">
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openLogModal('${ds}','${planned.name}')">Log This Workout</button>
+        <button class="btn btn-primary btn-sm" onclick="openLogModal('${ds}','${planned.name}')">Log This Workout</button>
       </div>
     </div>`;
   });
