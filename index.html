@@ -1612,7 +1612,7 @@ async function renderDayPanel(ds) {
           ${target?`<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:4px">Target: <strong>${target}</strong>${typeLabel?' · '+typeLabel:''}</div>`:''}
           ${sets?`<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Sets: ${Array.from({length:parseInt(sets)||1},(_,i)=>`<span style="display:inline-block;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border);text-align:center;line-height:18px;font-size:9px;margin-right:3px;font-weight:700">${i+1}</span>`).join('')}</div>`:''}
           ${cues?.length?`<div style="margin-top:4px">${cues.slice(0,3).map(c=>`<div style="font-size:11px;color:var(--text-secondary);padding:3px 0;display:flex;align-items:flex-start;gap:4px"><span style="color:var(--orange);flex-shrink:0">•</span>${c}</div>`).join('')}</div>`:''}
-          ${!cues?.length&&section==='main'?`<div style="font-size:10.5px;color:var(--text-muted);font-style:italic">Tap to expand in workout mode for form cues</div>`:''}
+          ${!cues?.length&&section==='main'?`<div id="cue-load-${section}-${idx}" style="font-size:10.5px;color:var(--text-muted);font-style:italic;cursor:pointer" onclick="event.stopPropagation();loadCuesForPreview('${name.replace(/'/g,"\\'")}','cue-load-${section}-${idx}')">Tap to load form cues</div>`:''}
         </div>
       </div>`;
     };
@@ -4090,6 +4090,7 @@ const FORM_CUES = {
   'Walking Lunges': ['Long stride so front shin stays vertical','Back knee drops close to but doesn\'t touch the floor','Torso upright — don\'t lean forward','Drive through front heel to step through'],
   // Shoulders
   'Overhead Press': ['Bar starts at upper chest/chin level','Press straight up — bar travels slightly back as it clears your head','Lock out overhead with biceps by ears','Core tight throughout — don\'t hyperextend your lower back'],
+  'Seated Dumbbell Shoulder Press': ['Sit with back supported, core tight','Dumbbells start at ear height, press to full lockout','Don\'t flare elbows — slight forward angle protects shoulders','Lower with control to ear height, don\'t bounce at the bottom'],
   'Dumbbell Shoulder Press': ['Can be done seated or standing — standing is harder and more functional','Dumbbells start at ear height, press to neutral at top','Don\'t flare elbows too wide — slight angle forward protects the shoulder','Full lockout at the top, controlled descent'],
   'Lateral Raise': ['Slight bend in elbow throughout','Lead with your elbows, not your hands','Stop at shoulder height — going higher shifts to traps','The weight should be light — this is an isolation exercise'],
   'Cable Lateral Raise': ['Cable keeps tension throughout the range unlike dumbbells','Lean slightly away from the cable for better resistance curve','Stop at shoulder height, squeeze the delt','Slow and controlled — momentum defeats the purpose'],
@@ -4101,6 +4102,7 @@ const FORM_CUES = {
   'Hammer Curl': ['Palms facing each other (neutral grip) throughout','Targets the brachialis and brachioradialis more than the bicep','Elbows stay at sides — same as regular curl','Can be done alternating or together'],
   'Cable Curl': ['Set the cable low — this keeps tension at the top where dumbbells lose it','Keep elbows at your sides','Squeeze hard at the top of the movement','Great as a finishing exercise after barbell or dumbbell curls'],
   'Tricep Pushdown': ['Cable set high, use rope or bar attachment','Elbows stay pinned at your sides — they should not move at all','Full extension at the bottom — lock out and squeeze','Control the weight back up — don\'t let it pull your arms up'],
+  'Rope Tricep Pulldown': ['Use a rope attachment on the high cable','Elbows pinned at your sides, pull down and split the rope at the bottom','Squeeze the triceps hard at full extension','Slow and controlled on the way back up — don\'t let the stack yank your arms'],
   'Skull Crushers': ['Bar comes down to your forehead (hence the name — be careful)','Elbows stay pointing at the ceiling throughout','Full extension at the top without locking elbows aggressively','Can use EZ bar, straight bar, or dumbbells'],
   'Overhead Tricep Extension': ['One or two dumbbells held overhead','Elbows stay pointed forward — don\'t let them flare wide','Lower behind your head and fully extend back up','Great for the long head of the tricep — often undertrained'],
   'Dips': ['Tricep dips: stay upright, elbows close to body','Chest dips: lean forward, elbows out — very different exercise','Lower until upper arms are parallel to the floor','Full lockout at the top — squeeze the triceps'],
@@ -4114,11 +4116,69 @@ const FORM_CUES = {
 };
 
 
+async function loadCuesForPreview(exerciseName, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '<span style="color:var(--orange)">Loading form cues...</span>';
+  try {
+    // First check the exercise library in DB
+    const libEx = (_exLibrary||[]).find(e=>e.name.toLowerCase()===exerciseName.toLowerCase());
+    if (libEx?.form_cues) {
+      const cues = JSON.parse(libEx.form_cues);
+      container.innerHTML = cues.slice(0,3).map(c=>`<div style="font-size:11px;color:var(--text-secondary);padding:3px 0;display:flex;align-items:flex-start;gap:4px"><span style="color:var(--orange);flex-shrink:0">•</span>${c}</div>`).join('');
+      return;
+    }
+    // Try generating via AI
+    if (libEx?.id) {
+      await generateExerciseAIContent(libEx.id, exerciseName, libEx.muscle_group, libEx.equipment, false, true);
+      // Reload library to get fresh cues
+      _exLibrary = await db('exercises','GET',null,'?select=*');
+      const updated = _exLibrary.find(e=>e.name.toLowerCase()===exerciseName.toLowerCase());
+      if (updated?.form_cues) {
+        const cues = JSON.parse(updated.form_cues);
+        container.innerHTML = cues.slice(0,3).map(c=>`<div style="font-size:11px;color:var(--text-secondary);padding:3px 0;display:flex;align-items:flex-start;gap:4px"><span style="color:var(--orange);flex-shrink:0">•</span>${c}</div>`).join('');
+        return;
+      }
+    }
+    container.innerHTML = '<span style="color:var(--text-muted)">No form cues available</span>';
+  } catch(e) {
+    console.error('Load cues error:', e);
+    container.innerHTML = '<span style="color:var(--text-muted)">Could not load form cues</span>';
+  }
+}
+
 function getFormCues(exerciseName) {
   if (!exerciseName || typeof FORM_CUES === 'undefined') return null;
-  return FORM_CUES[exerciseName] ||
-    FORM_CUES[Object.keys(FORM_CUES).find(k=>k.toLowerCase()===exerciseName.toLowerCase())] ||
-    null;
+  // Exact match
+  if (FORM_CUES[exerciseName]) return FORM_CUES[exerciseName];
+  // Case-insensitive match
+  const lowerName = exerciseName.toLowerCase();
+  const ciKey = Object.keys(FORM_CUES).find(k=>k.toLowerCase()===lowerName);
+  if (ciKey) return FORM_CUES[ciKey];
+  // Singular/plural match (strip trailing 's')
+  const stripped = lowerName.replace(/s$/,'');
+  const pluralKey = Object.keys(FORM_CUES).find(k=>{
+    const kl = k.toLowerCase();
+    return kl === stripped || kl.replace(/s$/,'') === stripped || kl === lowerName+'s' || kl+'s' === lowerName;
+  });
+  if (pluralKey) return FORM_CUES[pluralKey];
+  // Partial match — if the exercise name contains a known exercise name (e.g. "Rope Tricep Pulldowns" contains "Tricep Pushdown")
+  // or vice versa, use that
+  const partialKey = Object.keys(FORM_CUES).find(k=>{
+    const kl = k.toLowerCase();
+    // Check if the core words overlap significantly
+    const kWords = kl.split(/\s+/).filter(w=>w.length>2);
+    const nWords = lowerName.split(/\s+/).filter(w=>w.length>2);
+    const overlap = kWords.filter(w=>nWords.some(n=>n.startsWith(w.slice(0,4)) || w.startsWith(n.slice(0,4)))).length;
+    return overlap >= 2 && overlap >= kWords.length * 0.5;
+  });
+  if (partialKey) return FORM_CUES[partialKey];
+  // Check exercise library for DB-stored cues
+  const libEx = (_exLibrary||[]).find(e=>e.name.toLowerCase()===lowerName);
+  if (libEx?.form_cues) {
+    try { return JSON.parse(libEx.form_cues); } catch(e) { return null; }
+  }
+  return null;
 }
 
 function buildWMStrength(ex,ei){
