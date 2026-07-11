@@ -1924,7 +1924,7 @@ async function openLogModal(ds, suggestedName) {
       const name = typeof exData === 'string' ? exData : (exData.name||'');
       const libEx = _exLibrary.find(e=>e.name.toLowerCase()===name.toLowerCase());
       const libType = libEx?.exercise_type;
-      const isCardio = libType==='cardio' || (!libType && /run|row|bike|cardio|swim|walk/i.test(name));
+      const isCardio = libType==='cardio' || (!libType && /\b(running|rowing|biking|cycling|cardio|swimming|walking|jogging|sprinting)\b|^row\b|^run\b|^swim\b|^walk\b|^bike\b/i.test(name));
       const isSimple = sectionLabel === 'warmup' || sectionLabel === 'cooldown';
       if (isCardio) return {name,type:'cardio',section:sectionLabel,cardio:{dist:'',pace:'',dur:'',done:false},expanded:false};
       if (isSimple) return {name,type:'simple',section:sectionLabel,done:false,expanded:false};
@@ -2328,7 +2328,9 @@ function addExercise(){
   saveSectionNotes();
   const inp=document.getElementById('add-ex-input');
   const name=inp?.value?.trim(); if(!name) return;
-  const isCardio=/run|row|bike|cardio|swim|walk/i.test(name);
+  const libEx = (_exLibrary||[]).find(e=>e.name.toLowerCase()===name.toLowerCase());
+  const libType = libEx?.exercise_type;
+  const isCardio = libType==='cardio' || (!libType && /\b(running|rowing|biking|cycling|cardio|swimming|walking|jogging|sprinting)\b|^row\b|^run\b|^swim\b|^walk\b|^bike\b/i.test(name));
   _logExercises.forEach(e=>e.expanded=false);
   _logExercises.push(isCardio?{name,type:'cardio',section:'main',cardio:{dist:'',pace:'',dur:'',done:false},expanded:true}
     :{name,type:'strength',section:'main',sets:[{w:'',r:'',done:false},{w:'',r:'',done:false},{w:'',r:'',done:false}],expanded:true});
@@ -2534,8 +2536,10 @@ async function confirmCopyPlannedWorkout(fromDate, toDate, workoutName) {
   // Convert program exercises to blank log format
   const toEx = (ex, section) => {
     const name = typeof ex === 'string' ? ex : (ex.name||'');
+    const libEx = (_exLibrary||[]).find(e=>e.name.toLowerCase()===name.toLowerCase());
+    const libType = libEx?.exercise_type;
     const isSimple = section === 'warmup' || section === 'cooldown';
-    const isCardio = /run|row|bike|cardio|swim|walk/i.test(name);
+    const isCardio = libType==='cardio' || (!libType && /\b(running|rowing|biking|cycling|cardio|swimming|walking|jogging|sprinting)\b|^row\b|^run\b|^swim\b|^walk\b|^bike\b/i.test(name));
     if (isCardio) return {name, type:'cardio', section, cardio:{dist:'',pace:'',dur:'',done:false}, expanded:false};
     if (isSimple) return {name, type:'simple', section, done:false, expanded:false};
     const sets = typeof ex === 'object' ? parseInt(ex.sets)||3 : 3;
@@ -2738,7 +2742,9 @@ async function openLogFromAssigned(assignmentId, ds, workoutName) {
     _logId   = null;
     const toEx = (exData, section) => {
       const name = typeof exData === 'string' ? exData : (exData.name||'');
-      const isCardio=/run|row|bike|cardio|swim|walk/i.test(name);
+      const libEx = (_exLibrary||[]).find(e=>e.name.toLowerCase()===name.toLowerCase());
+      const libType = libEx?.exercise_type;
+      const isCardio = libType==='cardio' || (!libType && /\b(running|rowing|biking|cycling|cardio|swimming|walking|jogging|sprinting)\b|^row\b|^run\b|^swim\b|^walk\b|^bike\b/i.test(name));
       const isBW=/pull.up|push.up|dip|chin|handstand/i.test(name);
       const isSimple = section === 'warmup' || section === 'cooldown';
       if (isCardio) return {name,type:'cardio',section,cardio:{dist:'',pace:'',dur:'',done:false},expanded:false};
@@ -7009,7 +7015,9 @@ function loadBuilderWorkout(workout) {
   // Convert builder workout into log modal format
   const toEx = (ex, section) => {
     const name = ex.name||'';
-    const isCardio = /run|row|bike|cardio|swim|walk/i.test(name);
+    const libEx = (_exLibrary||[]).find(e=>e.name.toLowerCase()===name.toLowerCase());
+    const libType = libEx?.exercise_type;
+    const isCardio = libType==='cardio' || (!libType && /\b(running|rowing|biking|cycling|cardio|swimming|walking|jogging|sprinting)\b|^row\b|^run\b|^swim\b|^walk\b|^bike\b/i.test(name));
     const isSimple = section==='warmup'||section==='cooldown';
     if (isCardio) return {name,type:'cardio',section,cardio:{dist:'',pace:'',dur:'',done:false},expanded:false};
     if (isSimple) return {name,type:'simple',section,done:false,expanded:false};
