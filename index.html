@@ -571,6 +571,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
       </div>
       <div class="sidebar-section">Support</div>
       <button class="nav-item" onclick="nav('help',this)"><span class="icon">❓</span>How to Use</button>
+      <button class="nav-item" onclick="nav('settings',this)"><span class="icon">⚙️</span>Settings</button>
     </nav>
     <div class="sidebar-footer">
       <div id="prog-progress-container"></div>
@@ -790,6 +791,12 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
       </div>
       <div class="view-body pad-bottom" id="maxes-body"></div>
     </div>
+    <!-- SETTINGS -->
+    <div class="view" id="view-settings">
+      <div class="view-header"><div class="view-title">⚙️ Settings</div></div>
+      <div class="content-area" id="settings-body"></div>
+    </div>
+
   </main>
 
   <!-- BOTTOM NAV (mobile only) -->
@@ -817,11 +824,26 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
       </div>
       <button class="more-menu-item" onclick="nav('builder');closeMoreMenu()"><span>🏗️</span>Workout Builder</button>
       <div style="padding:10px 16px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)">Account</div>
+      <button class="more-menu-item" onclick="nav('settings');closeMoreMenu()"><span>⚙️</span>Settings</button>
       <button class="more-menu-item" onclick="doLogout();closeMoreMenu()"><span>👤</span>Sign Out</button>
       <div style="padding:8px 16px 16px;display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:12.5px;color:var(--text-secondary)">Dark Mode</span>
         <button id="more-dark-toggle" onclick="toggleDarkMode()" style="background:none;border:none;cursor:pointer;font-size:22px">🌙</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ONBOARDING TOUR OVERLAY -->
+<div id="tour-overlay" style="display:none;position:fixed;inset:0;z-index:10000">
+  <div id="tour-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);transition:clip-path .3s"></div>
+  <div id="tour-tooltip" style="position:fixed;background:var(--surface);border:2px solid var(--orange);border-radius:12px;padding:16px 20px;max-width:320px;z-index:10001;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+    <div id="tour-step-indicator" style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--orange);margin-bottom:8px"></div>
+    <div id="tour-title" style="font-size:15px;font-weight:800;color:var(--text-primary);margin-bottom:6px"></div>
+    <div id="tour-desc" style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:16px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <button id="tour-skip" onclick="endTour()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:6px 0">Skip tour</button>
+      <button id="tour-next" onclick="tourNext()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer">Next</button>
     </div>
   </div>
 </div>
@@ -1081,6 +1103,7 @@ function enterApp() {
   }
   nav('calendar');
   loadExLibrary(); // pre-warm the exercise library cache
+  checkFirstLogin(); // show onboarding tour for first-time athletes
 }
 
 // ═══════════════════════════════════════════════════
@@ -1106,6 +1129,7 @@ function nav(view, btn) {
   if (view==='builder')  renderWorkoutBuilder();
   if (view==='assign')   renderAssignWorkout();
   if (view==='help')     renderHelp();
+  if (view==='settings') renderSettings();
 }
 
 // ═══════════════════════════════════════════════════
@@ -7257,6 +7281,222 @@ function launchConfetti() {
     else { canvas.style.display = 'none'; ctx.clearRect(0,0,canvas.width,canvas.height); }
   }
   requestAnimationFrame(draw);
+}
+
+// ═══════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════
+function renderSettings() {
+  const body = document.getElementById('settings-body');
+  if (!body) return;
+  const isDark = document.body.classList.contains('dark-mode') || !document.body.classList.contains('light-mode');
+  body.innerHTML = `
+    <div style="max-width:500px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+      <!-- Account -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Account</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff">${(currentUser?.username||'?').slice(0,2).toUpperCase()}</div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text-primary)">${currentUser?.username||'—'}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${currentUser?.role==='admin'?'Coach / Admin':'Athlete'}</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm btn-full" onclick="doLogout()">Sign Out</button>
+      </div>
+
+      <!-- Appearance -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Appearance</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">Dark Mode</div>
+            <div style="font-size:12px;color:var(--text-muted)">Switch between dark and light themes</div>
+          </div>
+          <button onclick="toggleDarkMode();setTimeout(renderSettings,50)" style="background:${isDark?'var(--orange)':'var(--border)'};border:none;border-radius:14px;width:52px;height:28px;cursor:pointer;position:relative;transition:background .2s">
+            <div style="position:absolute;top:3px;${isDark?'right:3px':'left:3px'};width:22px;height:22px;border-radius:50%;background:#fff;transition:all .2s"></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tour -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px">Help</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">App Tour</div>
+            <div style="font-size:12px;color:var(--text-muted)">Quick guided walkthrough of the app</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="startTour()">Start Tour</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">How to Use</div>
+            <div style="font-size:12px;color:var(--text-muted)">Full feature guide</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="nav('help')">Open</button>
+        </div>
+      </div>
+
+      <div style="text-align:center;padding:20px 0;font-size:11px;color:var(--text-muted)">
+        Notch Workout Tracker<br>Built by Tyler Wilson
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// ONBOARDING TOUR
+// ═══════════════════════════════════════════════════
+const TOUR_STEPS = [
+  {
+    title: 'Welcome to Notch! 🏋️',
+    desc: 'Let\'s take a quick tour of the app. This will only take a minute.',
+    target: null, // no spotlight, just centered message
+  },
+  {
+    title: 'Your Calendar',
+    desc: 'This is your home base. Each day shows your planned workouts (orange) and completed workouts (green). Tap any day to see the details.',
+    target: '#cal-grid',
+  },
+  {
+    title: 'Monthly Goal',
+    desc: 'Track how many workouts you complete each month. The bar fills as you log workouts and turns green when you hit your goal. Build a streak! 🔥',
+    target: '#monthly-goal-bar',
+  },
+  {
+    title: 'Log a Workout',
+    desc: 'Tap a planned workout card, then hit "Log This Workout" to start. Or tap + Log to create a new workout from scratch.',
+    target: '#cal-log-btn',
+  },
+  {
+    title: 'Workout Mode ⚡',
+    desc: 'Once you open a workout, tap ⚡ Start for full-screen gym mode. Big inputs, swipe between exercises, and swipe right on any set to mark it done. Your screen stays on the whole time.',
+    target: null,
+  },
+  {
+    title: 'Exercise Preview',
+    desc: 'Tap any exercise name in a planned workout to preview it — see target sets, reps, and form cues before you even start training.',
+    target: null,
+  },
+  {
+    title: 'You\'re all set! 💪',
+    desc: 'That\'s the basics. Explore Programs to see your training plan, and check Progress to watch your strength grow over time. You can replay this tour anytime from Settings.',
+    target: null,
+  }
+];
+
+let _tourStep = 0;
+
+function startTour() {
+  // Navigate to calendar first
+  nav('calendar');
+  setTimeout(() => {
+    _tourStep = 0;
+    document.getElementById('tour-overlay').style.display = '';
+    showTourStep();
+  }, 300);
+}
+
+function showTourStep() {
+  const step = TOUR_STEPS[_tourStep];
+  if (!step) { endTour(); return; }
+
+  const overlay = document.getElementById('tour-overlay');
+  const backdrop = document.getElementById('tour-backdrop');
+  const tooltip = document.getElementById('tour-tooltip');
+
+  document.getElementById('tour-step-indicator').textContent = `Step ${_tourStep + 1} of ${TOUR_STEPS.length}`;
+  document.getElementById('tour-title').textContent = step.title;
+  document.getElementById('tour-desc').textContent = step.desc;
+
+  const isLast = _tourStep === TOUR_STEPS.length - 1;
+  document.getElementById('tour-next').textContent = isLast ? 'Finish' : 'Next';
+  document.getElementById('tour-skip').style.display = isLast ? 'none' : '';
+
+  if (step.target) {
+    const el = document.querySelector(step.target);
+    if (el) {
+      const r = el.getBoundingClientRect();
+      const pad = 8;
+      // Create spotlight cutout using clip-path
+      const x1 = r.left - pad, y1 = r.top - pad;
+      const x2 = r.right + pad, y2 = r.bottom + pad;
+      const w = window.innerWidth, h = window.innerHeight;
+      backdrop.style.clipPath = `polygon(
+        0 0, ${w}px 0, ${w}px ${h}px, 0 ${h}px, 0 0,
+        ${x1}px ${y1}px, ${x1}px ${y2}px, ${x2}px ${y2}px, ${x2}px ${y1}px, ${x1}px ${y1}px
+      )`;
+
+      // Position tooltip below or above the spotlight
+      const tooltipH = 200;
+      const spaceBelow = window.innerHeight - r.bottom;
+      if (spaceBelow > tooltipH + 20) {
+        tooltip.style.top = (r.bottom + 16) + 'px';
+        tooltip.style.bottom = '';
+      } else {
+        tooltip.style.top = '';
+        tooltip.style.bottom = (window.innerHeight - r.top + 16) + 'px';
+      }
+      tooltip.style.left = Math.max(16, Math.min(r.left, window.innerWidth - 340)) + 'px';
+      tooltip.style.right = '';
+
+      // Scroll element into view if needed
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+    } else {
+      // Target not found — show centered
+      backdrop.style.clipPath = '';
+      tooltip.style.top = '50%';
+      tooltip.style.left = '50%';
+      tooltip.style.right = '';
+      tooltip.style.bottom = '';
+      tooltip.style.transform = 'translate(-50%, -50%)';
+    }
+  } else {
+    // No target — centered modal
+    backdrop.style.clipPath = '';
+    tooltip.style.top = '50%';
+    tooltip.style.left = '50%';
+    tooltip.style.right = '';
+    tooltip.style.bottom = '';
+    tooltip.style.transform = 'translate(-50%, -50%)';
+  }
+
+  // Reset transform for targeted steps
+  if (step.target) {
+    tooltip.style.transform = '';
+  }
+}
+
+function tourNext() {
+  _tourStep++;
+  if (_tourStep >= TOUR_STEPS.length) {
+    endTour();
+  } else {
+    showTourStep();
+  }
+}
+
+async function endTour() {
+  document.getElementById('tour-overlay').style.display = 'none';
+  document.getElementById('tour-backdrop').style.clipPath = '';
+  // Save that user has completed the tour
+  if (currentUser) {
+    try {
+      await db('users', 'PATCH', {tour_completed: true}, `?id=eq.${currentUser.id}`);
+    } catch(e) { /* Column may not exist yet — that's fine */ }
+  }
+}
+
+async function checkFirstLogin() {
+  if (!currentUser) return;
+  // Only show tour for non-admin users who haven't seen it
+  if (currentUser.role === 'admin') return;
+  try {
+    const user = await db('users', 'GET', null, `?id=eq.${currentUser.id}&select=tour_completed`);
+    if (user?.[0]?.tour_completed) return;
+    // First login — start tour after a brief delay
+    setTimeout(startTour, 800);
+  } catch(e) { /* tour_completed column doesn't exist — skip */ }
 }
 
 // ═══════════════════════════════════════════════════
