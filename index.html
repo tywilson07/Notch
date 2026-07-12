@@ -6706,14 +6706,14 @@ async function openEditExercise(id) {
 }
 
 function buildExerciseModal(ex) {
-  const groups = ['Chest','Back','Legs','Shoulders','Biceps','Triceps','Core','Cardio','Warmup','Cooldown','Custom'];
+  const groups = ['Chest','Back','Legs','Glutes','Shoulders','Biceps','Triceps','Core','Carries','Cardio','Warmup','Cooldown','Custom'];
   const equipment = ['Any','Barbell','Dumbbell','Bodyweight','Cable','Machine','Cardio','Band'];
   const groupOpts = groups.map(g=>`<option ${ex?.muscle_group===g?'selected':''}>${g}</option>`).join('');
   const eqOpts = equipment.map(e=>`<option ${ex?.equipment===e?'selected':''}>${e}</option>`).join('');
   const altsText = (ex?.alternatives||[]).join(', ');
   const exType = ex?.exercise_type || 'strength';
-  const typeOpts = ['strength','cardio','simple'].map(t=>
-    `<option value="${t}" ${exType===t?'selected':''}>${t==='strength'?'Strength (sets × reps)':t==='cardio'?'Cardio (distance/time)':'Simple (checkbox only)'}</option>`
+  const typeOpts = ['strength','cardio','carry','simple'].map(t=>
+    `<option value="${t}" ${exType===t?'selected':''}>${t==='strength'?'Strength (sets × reps)':t==='cardio'?'Cardio (distance/time)':t==='carry'?'Carry (weight + distance + sets)':'Simple (checkbox only)'}</option>`
   ).join('');
   document.getElementById('modal-body').innerHTML = `
     <div class="field"><label>Exercise Name</label>
