@@ -1046,6 +1046,8 @@ async function doLogin() {
     const rows = await db('users','GET',null,`?username=eq.${encodeURIComponent(username)}&password_hash=eq.${hash}&select=*`);
     if (!rows || rows.length === 0) { showLoginError('Incorrect username or password'); return; }
     currentUser = rows[0];
+    // Load display_name if not already in row
+    if (typeof currentUser.display_name === 'undefined') currentUser.display_name = null;
     saveSession(currentUser);
     enterApp();
   } catch(e) { showLoginError('Connection error — check your internet'); console.error(e); }
@@ -1089,7 +1091,7 @@ function enterApp() {
   // Update sidebar
   const initials = currentUser.username.slice(0,2).toUpperCase();
   document.getElementById('sidebar-avatar').textContent = initials;
-  document.getElementById('sidebar-username').textContent = currentUser.username;
+  document.getElementById('sidebar-username').textContent = currentUser.display_name || currentUser.username;
   document.getElementById('sidebar-role').textContent = currentUser.role === 'admin' ? '👑 Admin' : '🏃 Athlete';
   // Show admin-only buttons
   if (currentUser.role === 'admin') {
@@ -7030,7 +7032,8 @@ function generateWorkoutLocal() {
       if (groupExs.length >= perGroup) break;
       const candidates = pattern.filter(name => {
         const libEx = _exLibrary.find(e=>e.name.toLowerCase()===name.toLowerCase());
-        return !libEx || allowedEq.includes(libEx.equipment||'Any');
+        const isStretch = /stretch|mobility|yoga|foam roll|pigeon|child pose|flexor/i.test(name);
+        return !isStretch && (!libEx || allowedEq.includes(libEx.equipment||'Any'));
       }).sort(()=>Math.random()-.5);
       if (candidates.length) groupExs.push({name:candidates[0], muscle_group:group});
     }
@@ -7040,7 +7043,10 @@ function generateWorkoutLocal() {
         const eqOk = allowedEq.includes(ex.equipment||'Any');
         const groupOk = (ex.muscle_group||'').toLowerCase()===group.toLowerCase();
         const notDupe = !groupExs.some(e=>e.name===ex.name);
-        return eqOk && groupOk && !['Warmup','Cooldown'].includes(ex.muscle_group) && notDupe;
+        // Never put stretches or mobility exercises in the main workout
+        const isStretch = /stretch|mobility|yoga|foam roll|pigeon|child pose|flexor/i.test(ex.name);
+        const notStretch = ex.exercise_type !== 'simple' && !isStretch;
+        return eqOk && groupOk && !['Warmup','Cooldown'].includes(ex.muscle_group) && notDupe && notStretch;
       }).sort(()=>Math.random()-.5);
       while (groupExs.length < perGroup && eligible.length) groupExs.push(eligible.shift());
     }
@@ -7507,6 +7513,39 @@ function launchConfetti() {
 // ═══════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════
+async function openChangeDisplayName() {
+  const current = currentUser?.display_name || '';
+  document.getElementById('modal-title').textContent = '✏ Display Name';
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      Your display name appears throughout the app. Your username (<strong>${currentUser?.username}</strong>) stays the same and is used to log in.
+    </div>
+    <div class="field">
+      <label>Display Name</label>
+      <input id="display-name-input" type="text" value="${current}"
+        placeholder="${currentUser?.username}"
+        style="font-size:16px;padding:10px;font-family:var(--font)" maxlength="40">
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">Leave blank to use your username.</div>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveDisplayName()">Save</button>`;
+  showModal();
+}
+
+async function saveDisplayName() {
+  const val = document.getElementById('display-name-input')?.value?.trim() || null;
+  try {
+    await db('users','PATCH',{display_name:val},`?id=eq.${currentUser.id}`);
+    currentUser.display_name = val;
+    closeModal();
+    // Update sidebar immediately
+    document.getElementById('sidebar-username').textContent = val || currentUser.username;
+    renderSettings();
+    toast(`Name updated to "${val || currentUser.username}" ✓`);
+  } catch(e) { toast('Could not save — try again'); console.error(e); }
+}
+
 function renderSettings() {
   const body = document.getElementById('settings-body');
   if (!body) return;
@@ -7523,7 +7562,8 @@ function renderSettings() {
             <div style="font-size:12px;color:var(--text-muted)">${currentUser?.role==='admin'?'Coach / Admin':'Athlete'}</div>
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm btn-full" onclick="doLogout()">Sign Out</button>
+        <button class="btn btn-ghost btn-sm" style="width:auto;margin-left:auto" onclick="openChangeDisplayName()">✏ Change Name</button>
+        <button class="btn btn-ghost btn-sm btn-full" style="margin-top:8px" onclick="doLogout()">Sign Out</button>
       </div>
 
       <!-- Appearance -->
@@ -7572,36 +7612,27 @@ const TOUR_STEPS = [
   {
     title: 'Welcome to Notch! 🏋️',
     desc: 'Let\'s take a quick tour of the app. This will only take a minute.',
-    target: null, // no spotlight, just centered message
+    target: null,
   },
   {
     title: 'Your Calendar',
-    desc: 'This is your home base. Each day shows your planned workouts (orange) and completed workouts (green). Tap any day to see the details.',
+    desc: 'This is your home base. Each day shows your planned workouts (orange) and completed workouts (green). Tap any day to see the details in the panel below.',
     target: '#cal-grid',
   },
   {
-    title: 'Monthly Goal',
-    desc: 'Track how many workouts you complete each month. The bar fills as you log workouts and turns green when you hit your goal. Build a streak! 🔥',
-    target: '#monthly-goal-bar',
-  },
-  {
     title: 'Log a Workout',
-    desc: 'Tap a planned workout card, then hit "Log This Workout" to start. Or tap + Log to create a new workout from scratch.',
+    desc: 'Tap a planned workout card, then hit "Log This Workout" to start. Or tap + Log to create one from scratch.',
     target: '#cal-log-btn',
   },
   {
     title: 'Workout Mode ⚡',
-    desc: 'Once you open a workout, tap ⚡ Start for full-screen gym mode. Big inputs, swipe between exercises, and swipe right on any set to mark it done. Your screen stays on the whole time.',
+    desc: 'Once you open a workout, tap ⚡ Start for full-screen gym mode. Your screen stays on — no more unlocking between sets.',
     target: null,
-  },
-  {
-    title: 'Exercise Preview',
-    desc: 'Tap any exercise name in a planned workout to preview it — see target sets, reps, and form cues before you even start training.',
-    target: null,
+    animation: true,
   },
   {
     title: 'Build & Save Workouts',
-    desc: 'Use the Workout Builder to generate custom workouts. Tap Save to keep ones you like as reusable templates. You can also build your own multi-week programs from the Programs page.',
+    desc: 'Use the Workout Builder to generate custom workouts. Tap 💾 Save to keep ones you like. Find your saved workouts in Templates anytime.',
     target: null,
   },
   {
@@ -7634,6 +7665,33 @@ function showTourStep() {
   document.getElementById('tour-step-indicator').textContent = `Step ${_tourStep + 1} of ${TOUR_STEPS.length}`;
   document.getElementById('tour-title').textContent = step.title;
   document.getElementById('tour-desc').textContent = step.desc;
+
+  // Inject animated demo for workout mode step
+  const animContainer = document.getElementById('tour-anim');
+  if (animContainer) animContainer.remove();
+  if (step.animation) {
+    const anim = document.createElement('div');
+    anim.id = 'tour-anim';
+    anim.style.cssText = 'margin:12px 0 4px;border-radius:8px;overflow:hidden;border:1px solid var(--border)';
+    anim.innerHTML = `
+      <div style="background:var(--surface2);padding:8px 10px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--orange)">⚡ Workout Mode</div>
+      <div id="tour-set-demo" style="background:var(--surface);padding:10px">
+        <div id="tour-set-row" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:8px;position:relative;overflow:hidden;transition:border-color .3s">
+          <div id="tour-swipe-ind" style="position:absolute;left:0;top:0;bottom:0;background:var(--lime);width:0;transition:width .4s;display:flex;align-items:center;padding-left:10px;font-size:16px;font-weight:900;color:#0D0D0F">✓</div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);min-width:32px">SET 1</div>
+          <div style="background:var(--surface3);border:1.5px solid var(--border-strong);border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:22px;font-weight:700;color:var(--text-primary);min-width:70px;text-align:center">135</div>
+          <div style="font-size:14px;color:var(--text-muted)">×</div>
+          <div style="background:var(--surface3);border:1.5px solid var(--border-strong);border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:22px;font-weight:700;color:var(--text-primary);min-width:60px;text-align:center">8</div>
+          <div id="tour-check-btn" style="width:42px;height:42px;border-radius:50%;border:2px solid var(--border-strong);background:none;display:flex;align-items:center;justify-content:center;font-size:18px;margin-left:auto;flex-shrink:0;transition:all .3s;color:var(--text-muted)">○</div>
+        </div>
+        <div style="font-size:10.5px;color:var(--text-muted);text-align:center;margin-top:8px;font-style:italic">↔ Swipe right or tap ○ to mark done</div>
+      </div>`;
+    // Insert after desc text, before buttons
+    const footer = document.getElementById('tour-tooltip').querySelector('div:last-child');
+    document.getElementById('tour-tooltip').insertBefore(anim, footer);
+    // Run the animation loop
+    setTimeout(runTourSetAnimation, 600);
+  }
 
   const isLast = _tourStep === TOUR_STEPS.length - 1;
   document.getElementById('tour-next').textContent = isLast ? 'Finish' : 'Next';
@@ -7691,6 +7749,48 @@ function showTourStep() {
   if (step.target) {
     tooltip.style.transform = '';
   }
+}
+
+function runTourSetAnimation() {
+  // Only run if we're still on the animation step
+  if (!document.getElementById('tour-swipe-ind')) return;
+  const row = document.getElementById('tour-set-row');
+  const ind = document.getElementById('tour-swipe-ind');
+  const btn = document.getElementById('tour-check-btn');
+  if (!row || !ind || !btn) return;
+
+  // Phase 1: swipe indicator slides in (0.8s)
+  setTimeout(() => {
+    if (!ind) return;
+    ind.style.width = '100%';
+    ind.style.transition = 'width 0.6s ease';
+  }, 300);
+
+  // Phase 2: row goes green, check fills (1.4s)
+  setTimeout(() => {
+    if (!row || !btn) return;
+    row.style.borderColor = 'var(--lime)';
+    row.style.background = 'var(--lime-dim)';
+    btn.style.background = 'var(--lime)';
+    btn.style.borderColor = 'var(--lime)';
+    btn.style.color = '#0D0D0F';
+    btn.textContent = '✓';
+  }, 950);
+
+  // Phase 3: reset and loop (2.8s)
+  setTimeout(() => {
+    if (!row || !btn || !ind) return;
+    ind.style.transition = 'none';
+    ind.style.width = '0';
+    row.style.borderColor = 'var(--border)';
+    row.style.background = 'var(--surface2)';
+    btn.style.background = 'none';
+    btn.style.borderColor = 'var(--border-strong)';
+    btn.style.color = 'var(--text-muted)';
+    btn.textContent = '○';
+    // Loop
+    setTimeout(runTourSetAnimation, 600);
+  }, 2500);
 }
 
 function tourNext() {
