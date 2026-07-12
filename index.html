@@ -3,15 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<!-- PWA Manifest — inline data URI works on Safari iOS -->
-<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Notch%20%E2%80%94%20Workout%20Tracker%22%2C%22short_name%22%3A%22Notch%22%2C%22description%22%3A%22Track%20your%20workouts%2C%20PRs%2C%20and%20programs%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230D0D0F%22%2C%22theme_color%22%3A%22%23FF5C00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527%2520viewBox%3D%25270%25200%2520192%2520192%2527%253E%253Crect%2520width%3D%2527192%2527%2520height%3D%2527192%2527%2520rx%3D%252736%2527%2520fill%3D%2527%25230D0D0F%2527%2F%253E%253Ctext%2520x%3D%252796%2527%2520y%3D%2527138%2527%2520text-anchor%3D%2527middle%2527%2520font-size%3D%2527120%2527%2520font-weight%3D%2527900%2527%2520fill%3D%2527%2523FF5C00%2527%2520font-family%3D%2527Arial%2520Black%2CArial%2Csans-serif%2527%253EN%253C%2Ftext%253E%253Crect%2520x%3D%252720%2527%2520y%3D%2527158%2527%2520width%3D%2527152%2527%2520height%3D%25275%2527%2520rx%3D%25272.5%2527%2520fill%3D%2527%2523FF5C00%2527%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Notch">
 <meta name="theme-color" content="#FF5C00">
-<!-- Apple touch icon for home screen -->
-<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADmElEQVR42u3dUUocQRhG0d6AZIPufxuGvAXBRAltuu53Cu6789ehLKeH8boetl5efrzpnK71BQHwEAtuiAU3yAIbZMVg2xAlUNsEZWAbvDKoDVwZ1AatDGoDVga1wSqD2kCVQW2QyqA2QKVQP+2FvL1eH2ajgT4G858ggw31MZi/AhlsqB8N+l8wQw10DjPUUCdBQz0MuogZ6GHUVdBQA53CDPUg6PLpDPUgaqAF9IGg11FX55l7Mgi1d5GmQa+iBjoMehE10E5poIF2SgMN9H8DvYQa6BHQK6iBBhrok0AvDBzqnU8zAj2GGuhB0GXUQI+CrqIGGmiggW6ALqIGehx0DTXQQKdQAw000ED3QFdQAw10CjXQQKdQAw10CjXQQAMNdB/0qaiBBjqFGmigU6iBBhpooLdAn4QaaKBTqIEGOoUaaKBTqIEGGmigt0E/GTXQQKdQAx0ZONRA5wYONNC5ga+jBjo48GXUQAOd2nigowNfRQ10eOBAA50b+BpqoAcGvoQaaKBTqIEeGTjQQOcGvoAa6LGB11EDDXQKNdCDvxLLqIEeveMBDXRu4EXUQI//FV5DDTTQKdRAe58UaKB7A6+gBhroFGqggU7dp4EGOoUaaKBTVw+ggU6hBhroFGqggU7dp4EGOnVKAw10CjXQQKdQAw106j4NNNAp1EADnbp6AA10CjXQQKdQAw106j4NNNCpUxpooFOogQY6hRpooFP3aaCBTqEGGujU1QNooFOogQY6hRpooFP3aaCBTqEGGmiogQZ6CTXQQAMNdBN0ATXQQKdQAw10CjXQQKdQAw000EBvgD4RNdBAp1ADDXQKNdBAAw30HuhTUAMNdAo10ECnUAMNdAo10EADDTTQT0UNNNAp1EADnUINNNBAAw30U1EDDXQKNdBAp1ADDXQKNdBAAw000Cd9sTrQQOf+/QXQQB+JGmigndJAA+2UBnoW9HejBhroFGqglUINtIAGWk9F/RjQv5YNhzqDGWiogRbQT3xKCDTUQAvqh76/DzTUqYdVQOvLsJ/8OoDWp2Gf8PNfvy8bqpO73q/FLxlU5yOmQKsN+k7UNlN3gr4+WkALaKD1VNB3obaZugv09bcFtFKg70BtM3UH6OuzC2ilQHtyqOOeDEKtKcxAKwcaaqUwQ60cZqiVwwy1cpihVg4z1Mphhlo5zFArhxls5SBDrSRmsJWDDLaSkOFWEjHcyiIGHtjvWj8BJkMdu/GLjW0AAAAASUVORK5CYII=">
-<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADmElEQVR42u3dUUocQRhG0d6AZIPufxuGvAXBRAltuu53Cu6789ehLKeH8boetl5efrzpnK71BQHwEAtuiAU3yAIbZMVg2xAlUNsEZWAbvDKoDVwZ1AatDGoDVga1wSqD2kCVQW2QyqA2QKVQP+2FvL1eH2ajgT4G858ggw31MZi/AhlsqB8N+l8wQw10DjPUUCdBQz0MuogZ6GHUVdBQA53CDPUg6PLpDPUgaqAF9IGg11FX55l7Mgi1d5GmQa+iBjoMehE10E5poIF2SgMN9H8DvYQa6BHQK6iBBhrok0AvDBzqnU8zAj2GGuhB0GXUQI+CrqIGGmiggW6ALqIGehx0DTXQQKdQAw000ED3QFdQAw10CjXQQKdQAw10CjXQQAMNdB/0qaiBBjqFGmigU6iBBhpooLdAn4QaaKBTqIEGOoUaaKBTqIEGGmigt0E/GTXQQKdQAx0ZONRA5wYONNC5ga+jBjo48GXUQAOd2nigowNfRQ10eOBAA50b+BpqoAcGvoQaaKBTqIEeGTjQQOcGvoAa6LGB11EDDXQKNdCDvxLLqIEeveMBDXRu4EXUQI//FV5DDTTQKdRAe58UaKB7A6+gBhroFGqggU7dp4EGOoUaaKBTVw+ggU6hBhroFGqggU7dp4EGOnVKAw10CjXQQKdQAw106j4NNNAp1EADnbp6AA10CjXQQKdQAw106j4NNNCpUxpooFOogQY6hRpooFP3aaCBTqEGGujU1QNooFOogQY6hRpooFP3aaCBTqEGGmiogQZ6CTXQQAMNdBN0ATXQQKdQAw10CjXQQKdQAw000EBvgD4RNdBAp1ADDXQKNdBAAw30HuhTUAMNdAo10ECnUAMNdAo10EADDTTQT0UNNNAp1EADnUINNNBAAw30U1EDDXQKNdBAp1ADDXQKNdBAAw000Cd9sTrQQOf+/QXQQB+JGmigndJAA+2UBnoW9HejBhroFGqglUINtIAGWk9F/RjQv5YNhzqDGWiogRbQT3xKCDTUQAvqh76/DzTUqYdVQOvLsJ/8OoDWp2Gf8PNfvy8bqpO73q/FLxlU5yOmQKsN+k7UNlN3gr4+WkALaKD1VNB3obaZugv09bcFtFKg70BtM3UH6OuzC2ilQHtyqOOeDEKtKcxAKwcaaqUwQ60cZqiVwwy1cpihVg4z1Mphhlo5zFArhxls5SBDrSRmsJWDDLaSkOFWEjHcyiIGHtjvWj8BJkMdu/GLjW0AAAAASUVORK5CYII=">
+<link rel="manifest" href="/manifest.json">
 <title>Notch — Workout Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -527,6 +524,15 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
   .view-title{font-size:15px}
 }
 </style>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .then(r => console.log("[SW] Registered:", r.scope))
+          .catch(e => console.warn("[SW] Registration failed:", e));
+      });
+    }
+  </script>
 </head>
 <body>
 
