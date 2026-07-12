@@ -1103,6 +1103,7 @@ function enterApp() {
     if (toggle) toggle.style.display = '';
   }
   nav('calendar');
+  setTimeout(() => setCalView('week'), 100); // default to week view on login
   loadExLibrary(); // pre-warm the exercise library cache
   checkFirstLogin(); // show onboarding tour for first-time athletes
 }
