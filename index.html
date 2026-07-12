@@ -1584,6 +1584,14 @@ async function renderDayPanel(ds) {
           ${ex.done?`<div style="font-size:10.5px;color:var(--lime);font-weight:700">✓ Done</div>`:''}
         </div>`;
       }
+      if (ex.type==='carry') {
+        const c = ex.carry||{};
+        const info = [c.sets?`${c.sets} sets`:'', c.weight?`${c.weight}lb`:'', c.dist?`${c.dist}m`:''].filter(Boolean).join(' · ');
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0">
+          <div style="font-size:12px;font-weight:700;color:var(--text-secondary)">${ex.name}</div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted)">${info||'—'} ${c.done?'<span style="color:var(--lime);font-weight:700">✓</span>':''}</div>
+        </div>`;
+      }
       if (ex.type==='cardio') {
         const c = ex.cardio||{};
         const info = [c.dist?`${c.dist}mi`:'', c.dur?c.dur:'', c.pace?`@${c.pace}`:''].filter(Boolean).join(' · ');
@@ -2155,10 +2163,13 @@ function renderLogModal(existing) {
 
 function buildExBlock(ex,ei){
   const isSimple = ex.type==='simple';
+  const isCarry = ex.type==='carry';
   const doneSets = ex.type==='strength'?(ex.sets||[]).filter(s=>s.done).length
     : ex.type==='cardio'?(ex.cardio?.done?1:0)
+    : ex.type==='carry'?(ex.carry?.done?1:0)
     : (ex.done?1:0);
   const totalSets = ex.type==='strength'?(ex.sets||[]).length:1;
+  const isCarryEx = ex.type==='carry';
   const allDone = doneSets===totalSets&&totalSets>0;
   const prevBest = ex.type==='strength'?getPrevBest(ex.name):null;
   const prevHint = prevBest?`<span style="font-size:10.5px;color:var(--lime);margin-left:6px;font-family:var(--mono)">↑ ${prevBest}</span>`:'';
@@ -2166,7 +2177,7 @@ function buildExBlock(ex,ei){
     : ex.type==='cardio'?'Cardio'
     : doneSets+'/'+totalSets+' sets';
   const innerHtml = ex.expanded
-    ? (isSimple?buildSimpleInner(ex,ei):ex.type==='strength'?buildStrengthInner(ex,ei):buildCardioInner(ex,ei))
+    ? (isSimple?buildSimpleInner(ex,ei):ex.type==='carry'?buildCarryInner(ex,ei):ex.type==='strength'?buildStrengthInner(ex,ei):buildCardioInner(ex,ei))
     : '';
   return `<div class="ex-log-block ${allDone?'ex-done':''}" id="ex-block-${ei}">
     <div class="ex-log-header" onclick="toggleExBlock(${ei})">
@@ -2259,6 +2270,48 @@ function buildStrengthInner(ex,ei){
     ${rows}
   </table>
   <button class="btn btn-ghost btn-sm" onclick="addSet(${ei})">+ Add Set</button>`;
+}
+
+function buildCarryInner(ex,ei){
+  const c=ex.carry||{};
+  return `
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px">
+      <div>
+        <div style="font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Weight (lb)</div>
+        <input type="number" value="${c.weight||''}" placeholder="135"
+          data-carry="weight" oninput="syncCarry(${ei},'weight',this.value)"
+          style="font-family:var(--mono);font-size:20px;font-weight:700;width:90px;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)">
+      </div>
+      <div>
+        <div style="font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Distance (m/ft)</div>
+        <input type="number" value="${c.dist||''}" placeholder="40"
+          data-carry="dist" oninput="syncCarry(${ei},'dist',this.value)"
+          style="font-family:var(--mono);font-size:20px;font-weight:700;width:90px;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)">
+      </div>
+      <div>
+        <div style="font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Sets</div>
+        <input type="number" value="${c.sets||'3'}" placeholder="3"
+          data-carry="sets" oninput="syncCarry(${ei},'sets',this.value)"
+          style="font-family:var(--mono);font-size:20px;font-weight:700;width:65px;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)">
+      </div>
+    </div>
+    <button onclick="toggleCarryDone(${ei})" style="width:100%;padding:10px;border-radius:var(--radius);border:2px solid ${c.done?'var(--lime)':'var(--border-strong)'};background:${c.done?'var(--lime-dim)':'none'};color:${c.done?'var(--lime)':'var(--text-muted)'};font-size:14px;font-weight:700;cursor:pointer;transition:all .15s">
+      ${c.done?'✓ Done':'Mark Done'}
+    </button>`;
+}
+
+function syncCarry(ei,field,val){if(_logExercises[ei]?.carry)_logExercises[ei].carry[field]=val;}
+
+function toggleCarryDone(ei){
+  if(_logExercises[ei]?.carry){
+    ['weight','dist','sets'].forEach(f=>{
+      const inp=document.querySelector(`#ex-block-${ei} input[data-carry="${f}"]`);
+      if(inp&&_logExercises[ei].carry)_logExercises[ei].carry[f]=inp.value;
+    });
+    _logExercises[ei].carry.done=!_logExercises[ei].carry.done;
+    const block=document.getElementById(`ex-block-${ei}`);
+    if(block)block.outerHTML=buildExBlock(_logExercises[ei],ei);
+  }
 }
 
 function buildCardioInner(ex,ei){
@@ -2372,9 +2425,12 @@ function addExercise(){
   const libEx = (_exLibrary||[]).find(e=>e.name.toLowerCase()===name.toLowerCase());
   const libType = libEx?.exercise_type;
   const isCardio = libType==='cardio' || (!libType && /\b(running|rowing|biking|cycling|cardio|swimming|walking|jogging|sprinting)\b|^row\b|^run\b|^swim\b|^walk\b|^bike\b/i.test(name));
+  const isCarry = libType==='carry' || (!libType && /carry|sled push|sled pull|yoke|prowler|farmer/i.test(name));
   _logExercises.forEach(e=>e.expanded=false);
-  _logExercises.push(isCardio?{name,type:'cardio',section:'main',cardio:{dist:'',pace:'',dur:'',done:false},expanded:true}
-    :{name,type:'strength',section:'main',sets:[{w:'',r:'',done:false},{w:'',r:'',done:false},{w:'',r:'',done:false}],expanded:true});
+  const newEx = isCardio ? {name,type:'cardio',section:'main',cardio:{dist:'',pace:'',dur:'',done:false},expanded:true}
+    : isCarry ? {name,type:'carry',section:'main',carry:{weight:'',dist:'',sets:'3',done:false},expanded:true}
+    : {name,type:'strength',section:'main',sets:[{w:'',r:'',done:false},{w:'',r:'',done:false},{w:'',r:'',done:false}],expanded:true};
+  _logExercises.push(newEx);
   inp.value=''; renderLogModal();
 }
 function removeExercise(ei){saveSectionNotes();_logExercises.splice(ei,1);renderLogModal();}
@@ -2390,6 +2446,10 @@ async function saveLog(){
     }
     if(ex.type==='cardio'&&ex.expanded){
       ['dist','pace','dur'].forEach(f=>{const inp=document.querySelector(`#ex-block-${ei} input[oninput*="'${f}'"]`);if(inp&&ex.cardio)ex.cardio[f]=inp.value;});
+    }
+    if(ex.type==='carry'&&ex.expanded){
+      ['weight','dist'].forEach(f=>{const inp=document.querySelector(`#ex-block-${ei} input[data-carry="${f}"]`);if(inp&&ex.carry)ex.carry[f]=inp.value;});
+      const setsInp=document.querySelector(`#ex-block-${ei} input[data-carry="sets"]`);if(setsInp&&ex.carry)ex.carry.sets=setsInp.value;
     }
   });
   const notes=document.getElementById('log-notes')?.value?.trim()||'';
@@ -2429,6 +2489,7 @@ async function saveLog(){
       name:ex.name, type:ex.type, section:ex.section||'main',
       sets:ex.type==='strength'?(ex.sets||[]).filter(s=>s.w||s.r).map(s=>({...s})):null,
       cardio:ex.type==='cardio'?{...ex.cardio}:null,
+      carry:ex.type==='carry'?{...ex.carry}:null,
       done:ex.type==='simple'?ex.done:undefined
     })),notes,warmup_notes,main_notes,cooldown_notes,result};
   try {
@@ -3629,7 +3690,7 @@ async function renderAthleteDetail(athlete, body) {
     // Recent workouts
     const recentHtml = (workouts||[]).slice(0,8).map(w=>{
       const mainOnly=(w.exercises||[]).filter(ex=>ex.section==='main'||!ex.section);
-      const doneCount=mainOnly.filter(ex=>ex.type==='cardio'?ex.cardio?.done:ex.type==='simple'?ex.done:(ex.sets||[]).some(s=>s.done)).length;
+      const doneCount=mainOnly.filter(ex=>ex.type==='cardio'?ex.cardio?.done:ex.type==='carry'?ex.carry?.done:ex.type==='simple'?ex.done:(ex.sets||[]).some(s=>s.done)).length;
       const totalCount=mainOnly.length;
       const fb=w.feedback_rating?FEEDBACK_LABELS[w.feedback_rating]:null;
       return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -3989,7 +4050,7 @@ function renderWorkoutMode() {
 
   const warmupDone=warmupExs.length>0&&warmupExs.every(e=>e.done);
   const cooldownDone=cooldownExs.length>0&&cooldownExs.every(e=>e.done);
-  const mainDone=mainExs.filter(ex=>ex.type==='cardio'?ex.cardio?.done:(ex.sets||[]).length>0&&(ex.sets||[]).every(s=>s.done)).length;
+  const mainDone=mainExs.filter(ex=>ex.type==='cardio'?ex.cardio?.done:ex.type==='carry'?ex.carry?.done:(ex.sets||[]).length>0&&(ex.sets||[]).every(s=>s.done)).length;
   const totalItems=(warmupExs.length?1:0)+mainExs.length+(cooldownExs.length?1:0);
   const doneItems=(warmupExs.length&&warmupDone?1:0)+mainDone+(cooldownExs.length&&cooldownDone?1:0);
   const pct=totalItems>0?Math.round((doneItems/totalItems)*100):0;
@@ -4004,7 +4065,7 @@ function renderWorkoutMode() {
   if(warmupExs.length) navItems.push({label:'🔥 Warm-Up',section:'warmup',done:warmupDone,isSection:true,noteSection:'warmup'});
   mainExs.forEach(ex=>navItems.push({
     label:ex.name, ex,
-    done:ex.type==='cardio'?ex.cardio?.done:(ex.sets||[]).length>0&&(ex.sets||[]).every(s=>s.done),
+    done:ex.type==='cardio'?ex.cardio?.done:ex.type==='carry'?ex.carry?.done:(ex.sets||[]).length>0&&(ex.sets||[]).every(s=>s.done),
     isSection:false, noteSection:'main'
   }));
   if(cooldownExs.length) navItems.push({label:'🧘 Cool Down',section:'cooldown',done:cooldownDone,isSection:true,noteSection:'cooldown'});
@@ -4083,7 +4144,7 @@ function renderWorkoutMode() {
       </button>`;
   } else {
     const globalIdx=_logExercises.indexOf(cur.ex);
-    document.getElementById('wm-body').innerHTML=cur.ex.type==='cardio'?buildWMCardio(cur.ex,globalIdx):buildWMStrength(cur.ex,globalIdx);
+    document.getElementById('wm-body').innerHTML=cur.ex.type==='cardio'?buildWMCardio(cur.ex,globalIdx):cur.ex.type==='carry'?buildWMCarry(cur.ex,globalIdx):buildWMStrength(cur.ex,globalIdx);
   }
 
   document.getElementById('wm-prev-btn').style.opacity=_wmCurrentIdx===0?'0.3':'1';
@@ -4316,6 +4377,48 @@ function buildWMStrength(ex,ei){
     ${cuesHtml}
     ${rows}
     <button class="btn btn-ghost btn-sm" onclick="wmAddSet(${ei})" style="margin-top:8px">+ Add Set</button>`;
+}
+
+function buildWMCarry(ex,ei){
+  const c=ex.carry||{};
+  return `
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:16px">🏋️ Loaded Carry</div>
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:20px">
+        <div style="text-align:center">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px">Weight (lb)</div>
+          <input class="wm-input" type="number" value="${c.weight||''}" placeholder="135"
+            oninput="_logExercises[${ei}].carry.weight=this.value"
+            style="width:95px;font-size:26px;padding:9px 4px">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px">Distance</div>
+          <input class="wm-input" type="number" value="${c.dist||''}" placeholder="40"
+            oninput="_logExercises[${ei}].carry.dist=this.value"
+            style="width:95px;font-size:26px;padding:9px 4px">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px">Sets</div>
+          <input class="wm-input" type="number" value="${c.sets||'3'}" placeholder="3"
+            oninput="_logExercises[${ei}].carry.sets=this.value"
+            style="width:65px;font-size:26px;padding:9px 4px">
+        </div>
+      </div>
+      <button onclick="wmToggleCarry(${ei})" style="width:100%;padding:16px;border-radius:var(--radius);border:2px solid ${c.done?'var(--lime)':'var(--border-strong)'};background:${c.done?'var(--lime-dim)':'none'};color:${c.done?'var(--lime)':'var(--text-muted)'};font-size:16px;font-weight:800;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:1px">
+        ${c.done?'✓ Done — tap to undo':'Mark All Sets Done'}
+      </button>
+    </div>`;
+}
+
+function wmToggleCarry(ei){
+  const ex=_logExercises[ei]; if(!ex?.carry) return;
+  // Save current input values
+  const inps=document.querySelectorAll('.wm-input');
+  if(inps[0])ex.carry.weight=inps[0].value;
+  if(inps[1])ex.carry.dist=inps[1].value;
+  if(inps[2])ex.carry.sets=inps[2].value;
+  ex.carry.done=!ex.carry.done;
+  renderWorkoutMode();
 }
 
 function buildWMCardio(ex,ei){
@@ -7210,8 +7313,10 @@ function loadBuilderWorkout(workout) {
     const libEx = (_exLibrary||[]).find(e=>e.name.toLowerCase()===name.toLowerCase());
     const libType = libEx?.exercise_type;
     const isCardio = libType==='cardio' || (!libType && /\b(running|rowing|biking|cycling|cardio|swimming|walking|jogging|sprinting)\b|^row\b|^run\b|^swim\b|^walk\b|^bike\b/i.test(name));
+    const isCarry = libType==='carry' || (!libType && /carry|sled push|sled pull|yoke|prowler|farmer/i.test(name));
     const isSimple = section==='warmup'||section==='cooldown';
     if (isCardio) return {name,type:'cardio',section,cardio:{dist:'',pace:'',dur:'',done:false},expanded:false};
+    if (isCarry) return {name,type:'carry',section,carry:{weight:'',dist:'',sets:'3',done:false},expanded:false};
     if (isSimple) return {name,type:'simple',section,done:false,expanded:false};
     const targetSets = parseInt(ex.sets)||3;
     const targetReps = ex.reps||'';
