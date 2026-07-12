@@ -1,0 +1,10 @@
+{
+  "name": "Notch — Workout Tracker",
+  "short_name": "Notch",
+  "description": "Track workouts, PRs, and programs with your coach",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D0D0F",
+  "theme_color": "#FF5C00"
+}
