@@ -279,9 +279,9 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .completion-stat{background:var(--surface2);border-radius:var(--radius-sm);padding:12px 8px;border:1px solid var(--border)}
 .completion-stat-val{font-size:24px;font-weight:900;font-family:var(--mono);color:var(--orange)}
 .completion-stat-label{font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
-.completion-prs{background:var(--amber-light);border:1px solid #FDE68A;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:16px;text-align:left;display:none}
-.completion-pr-title{font-size:10.5px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
-.completion-pr-item{font-size:13px;color:var(--gray-700);margin-bottom:3px}
+.completion-prs{background:linear-gradient(135deg,#1a1000,#2a1800);border:2px solid var(--orange);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;text-align:center;display:none;animation:prPulse .6s ease}
+.completion-pr-title{font-size:11px;font-weight:900;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.completion-pr-item{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;padding:4px 0}
 
 /* ── IMPROVED EMPTY STATES ── */
 .empty-state{text-align:center;padding:48px 24px;color:var(--text-secondary)}
@@ -893,7 +893,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
     <div class="completion-sub" id="comp-sub"></div>
     <div class="completion-stats" id="comp-stats"></div>
     <div class="completion-prs" id="comp-prs">
-      <div class="completion-pr-title">🏅 New PRs Hit</div>
+      <div class="completion-pr-title">🏆 NEW PERSONAL RECORD!</div>
       <div id="comp-pr-list"></div>
     </div>
     <!-- Athlete feedback -->
@@ -1630,7 +1630,8 @@ async function renderDayPanel(ds) {
         <div style="display:flex;align-items:center;gap:8px">
           <div class="workout-entry-name">${w.day_name||w.name||'Workout'}</div>
         </div>
-        <div style="display:flex;gap:4px;flex-shrink:0">
+        <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
+          ${w.duration_mins?`<span style="font-size:10px;color:var(--text-muted);font-family:var(--mono);font-weight:700">⏱ ${w.duration_mins}min</span>`:''}
           <button class="btn btn-xs btn-ghost" onclick="openMoveWorkout('${w.id}','${ds}')">↕ Move</button>
           <button class="btn btn-xs btn-ghost" onclick="openCopyWorkout('${w.id}','${ds}')">📋 Copy</button>
           <button class="btn btn-xs btn-ghost" onclick="editLog('${ds}','${w.id}')">Edit</button>
@@ -1824,7 +1825,7 @@ async function calDrop(e,toDate){
 // ═══════════════════════════════════════════════════
 // LOG MODAL
 // ═══════════════════════════════════════════════════
-let _logDate=null, _logId=null, _logExercises=[], _logDayName=null;
+let _logDate=null, _logId=null, _logExercises=[], _logDayName=null, _workoutStartTime=null;
 
 // ── Previous workout cache ──
 let _prevCache = {};
@@ -1965,6 +1966,7 @@ async function openLogModal(ds, suggestedName) {
   _logDate  = ds||selectedDate;
   _logId    = null;
   _logDayName = suggestedName || null;
+  _workoutStartTime = Date.now(); // start tracking duration
   const planned = suggestedName
     ? getPlannedWorkouts(_logDate).find(p=>p.name===suggestedName) || getPlannedWorkout(_logDate)
     : getPlannedWorkout(_logDate);
@@ -4021,6 +4023,7 @@ function startWorkoutMode() {
   closeModal();
   _wmCurrentIdx=0;
   document.getElementById('workout-mode').classList.add('show');
+  if (!_workoutStartTime) _workoutStartTime = Date.now(); // track workout start
   acquireWakeLock();
   // Populate notes panel
   const notesInput = document.getElementById('wm-notes-input');
@@ -5587,6 +5590,8 @@ function showCompletionScreen({dayName, totalSets, totalVol, totalDist, newPRs, 
   if (totalSets > 0) stats.push({val:totalSets, label:'Sets Done'});
   if (totalVol > 0)  stats.push({val:Math.round(totalVol).toLocaleString()+'lb', label:'Volume'});
   if (totalDist > 0) stats.push({val:totalDist.toFixed(1)+'mi', label:'Distance'});
+  const elapsed = _workoutStartTime ? Math.round((Date.now()-_workoutStartTime)/60000) : null;
+  if (elapsed && elapsed > 1) stats.push({val:elapsed+'min', label:'Duration'});
   // Always show a "stat" even if no sets logged
   if (stats.length === 0) stats.push({val:'✓', label:'Logged'});
 
@@ -5600,6 +5605,8 @@ function showCompletionScreen({dayName, totalSets, totalVol, totalDist, newPRs, 
   const prList = document.getElementById('comp-pr-list');
   if (newPRs.length > 0) {
     prList.innerHTML = newPRs.map(pr=>`<div class="completion-pr-item">🏅 ${pr}</div>`).join('');
+    // Extra confetti burst for PRs
+    setTimeout(launchConfetti, 400);
     prEl.style.display = 'block';
   } else {
     prEl.style.display = 'none';
@@ -5806,43 +5813,138 @@ function hookExAutocomplete(inputEl, dropEl) {
 // ═══════════════════════════════════════════════════
 let _templates = [];
 
+let _templatesTab = 'workouts'; // 'workouts' or 'programs'
+
 async function renderTemplates() {
   const isAdmin = currentUser.role === 'admin';
   const body = document.getElementById('templates-body');
-  body.innerHTML = '<div class="loading">Loading templates...</div>';
+  body.innerHTML = '<div class="loading">Loading...</div>';
+
+  // Tab header
+  const tabHtml = `
+    <div style="display:flex;gap:4px;background:var(--surface2);padding:4px;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:16px">
+      <button class="btn btn-sm ${_templatesTab==='workouts'?'btn-primary':'btn-ghost'}" style="flex:1" onclick="_templatesTab='workouts';renderTemplates()">💪 Workout Templates</button>
+      <button class="btn btn-sm ${_templatesTab==='programs'?'btn-primary':'btn-ghost'}" style="flex:1" onclick="_templatesTab='programs';renderTemplates()">📋 Program Templates</button>
+    </div>`;
+
   try {
-    const rows = await db('workout_templates','GET',null,
-      `?created_by=eq.${currentUser.id}&select=*&order=created_at.desc`);
-    _templates = rows || [];
-    if (!_templates.length) {
-      body.innerHTML = `<div class="empty-state">
-        <span class="emo">📁</span>
-        <h3>No templates yet</h3>
-        <p>${isAdmin ? 'Build reusable workout blueprints you can load into programs or assign to athletes.' : 'Save workouts from the Workout Builder to reuse them anytime.'}</p>
-        ${isAdmin ? '<button class="btn btn-primary btn-sm" onclick="openCreateTemplate()">+ New Template</button>' : '<button class="btn btn-primary btn-sm" onclick="nav(\'builder\')">Open Workout Builder</button>'}
-      </div>`;
-      return;
+    if (_templatesTab === 'workouts') {
+      // ── WORKOUT TEMPLATES ──
+      const rows = await db('workout_templates','GET',null,
+        isAdmin ? '?select=*&order=created_at.desc' : `?created_by=eq.${currentUser.id}&select=*&order=created_at.desc`);
+      _templates = rows || [];
+      if (!_templates.length) {
+        body.innerHTML = tabHtml + `<div class="empty-state">
+          <span class="emo">📁</span>
+          <h3>No workout templates yet</h3>
+          <p>${isAdmin ? 'Build reusable workout blueprints you can load into programs or assign to athletes.' : 'Save workouts from the Workout Builder to reuse them anytime.'}</p>
+          ${isAdmin ? '<button class="btn btn-primary btn-sm" onclick="openCreateTemplate()">+ New Template</button>' : '<button class="btn btn-primary btn-sm" onclick="nav(\'builder\')">Open Workout Builder</button>'}
+        </div>`;
+        return;
+      }
+      body.innerHTML = tabHtml + _templates.map(t => {
+        const exCount = (t.exercises||[]).length;
+        const names = (t.exercises||[]).slice(0,3).map(e=>typeof e==='string'?e:e.name).join(', ');
+        return `<div class="template-card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div class="template-card-name">${t.name}</div>
+              <div class="template-card-meta">${(t.warmup||[]).length} warm-up · ${exCount} main · ${(t.cooldown||[]).length} cool-down</div>
+              <div class="template-card-exercises">${names}${exCount>3?` +${exCount-3} more`:''}</div>
+              ${t.coach_notes?`<div style="font-size:11.5px;color:var(--purple);margin-top:4px">📝 ${t.coach_notes.slice(0,60)}${t.coach_notes.length>60?'...':''}</div>`:''}
+            </div>
+            <div style="display:flex;gap:5px;flex-shrink:0">
+              <button class="btn btn-primary btn-xs" onclick="loadTemplateWorkout('${t.id}')">Log</button>
+              ${isAdmin ? `<button class="btn btn-white btn-xs" onclick="openEditTemplate('${t.id}')">Edit</button>` : ''}
+              <button class="btn btn-danger btn-xs" onclick="deleteTemplate('${t.id}')">✕</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+    } else {
+      // ── PROGRAM TEMPLATES ──
+      const progs = await db('programs','GET',null,
+        isAdmin ? '?is_preset=eq.false&select=*&order=created_at.desc' : `?created_by=eq.${currentUser.id}&is_preset=eq.false&select=*&order=created_at.desc`);
+      if (!progs?.length) {
+        body.innerHTML = tabHtml + `<div class="empty-state">
+          <span class="emo">📋</span>
+          <h3>No saved programs yet</h3>
+          <p>Build a program from the Programs page, then save it as a template here to reuse it for other athletes or future training blocks.</p>
+          <button class="btn btn-primary btn-sm" onclick="nav('programs')">Go to Programs</button>
+        </div>`;
+        return;
+      }
+      body.innerHTML = tabHtml + progs.map(p => {
+        const daysPerWeek = (p.schedule||[]).length;
+        const tagClass = p.tag==='Powerlifting'?'pill-purple':p.tag==='Cardio'?'pill-green':p.tag==='Custom'?'pill-amber':'pill-blue';
+        return `<div class="template-card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <div class="template-card-name" style="margin-bottom:0">${p.name}</div>
+                <span class="pill ${tagClass}" style="font-size:9px">${p.tag||'Custom'}</span>
+              </div>
+              <div class="template-card-meta">${p.weeks} weeks · ${daysPerWeek} days/week</div>
+              <div class="template-card-exercises">${(p.schedule||[]).map(d=>d.name).join(', ')}</div>
+              ${p.description?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">${p.description.slice(0,80)}${p.description.length>80?'...':''}</div>`:''}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+              <button class="btn btn-primary btn-xs" onclick="cloneProgram('${p.id}')">Clone</button>
+              <button class="btn btn-white btn-xs" onclick="openEditProgram('${p.id}')">Edit</button>
+              <button class="btn btn-danger btn-xs" onclick="deleteProgram('${p.id}')">✕</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
     }
-    body.innerHTML = _templates.map(t => {
-      const exCount = (t.exercises||[]).length;
-      const names = (t.exercises||[]).slice(0,3).map(e=>typeof e==='string'?e:e.name).join(', ');
-      return `<div class="template-card">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div style="flex:1;min-width:0">
-            <div class="template-card-name">${t.name}</div>
-            <div class="template-card-meta">${(t.warmup||[]).length} warm-up · ${exCount} main · ${(t.cooldown||[]).length} cool-down</div>
-            <div class="template-card-exercises">${names}${exCount>3?` +${exCount-3} more`:''}</div>
-            ${t.coach_notes?`<div style="font-size:11.5px;color:var(--purple);margin-top:4px">📝 ${t.coach_notes.slice(0,60)}${t.coach_notes.length>60?'...':''}</div>`:''}
-          </div>
-          <div style="display:flex;gap:5px;flex-shrink:0">
-            <button class="btn btn-primary btn-xs" onclick="loadTemplateWorkout('${t.id}')">Log</button>
-            ${isAdmin ? `<button class="btn btn-white btn-xs" onclick="openEditTemplate('${t.id}')">Edit</button>` : ''}
-            <button class="btn btn-danger btn-xs" onclick="deleteTemplate('${t.id}')">✕</button>
-          </div>
-        </div>
+  } catch(e) { body.innerHTML = tabHtml + '<div class="error-msg">Could not load templates</div>'; }
+}
+
+async function cloneProgram(progId) {
+  try {
+    const rows = await db('programs','GET',null,`?id=eq.${progId}&select=*`);
+    const prog = rows?.[0];
+    if (!prog) { toast('Program not found'); return; }
+    document.getElementById('modal-title').textContent = `Clone "${prog.name}"`;
+    document.getElementById('modal-body').innerHTML = `
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+        Create a copy of this program you can rename, adjust, and assign to a new athlete or training block.
+      </div>
+      <div class="field">
+        <label>New Program Name</label>
+        <input id="clone-prog-name" type="text" value="${prog.name} (Copy)"
+          style="font-size:15px;padding:10px;font-family:var(--font)">
       </div>`;
-    }).join('');
-  } catch(e) { body.innerHTML = '<div class="error-msg">Could not load templates</div>'; }
+    document.getElementById('modal-footer').innerHTML = `
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmCloneProgram('${progId}')">Clone Program</button>`;
+    showModal();
+  } catch(e) { toast('Could not load program'); console.error(e); }
+}
+
+async function confirmCloneProgram(progId) {
+  const newName = document.getElementById('clone-prog-name')?.value?.trim();
+  if (!newName) { toast('Enter a name'); return; }
+  try {
+    const rows = await db('programs','GET',null,`?id=eq.${progId}&select=*`);
+    const prog = rows?.[0];
+    if (!prog) { toast('Program not found'); return; }
+    const payload = {
+      name: newName,
+      schedule: prog.schedule,
+      weeks: prog.weeks,
+      tag: prog.tag,
+      description: prog.description,
+      is_preset: false,
+      created_by: currentUser.id
+    };
+    await db('programs','POST',payload);
+    closeModal();
+    toast(`"${newName}" created ✓`);
+    renderTemplates();
+    if (prog) _calPrograms = null; // clear cache so programs page refreshes
+  } catch(e) { toast('Clone failed'); console.error(e); }
 }
 
 function loadTemplateWorkout(templateId) {
