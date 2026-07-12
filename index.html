@@ -350,15 +350,15 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
 .wm-body{flex:1;overflow-y:auto;padding:16px}
 .wm-ex-name{font-size:24px;font-weight:900;color:var(--text-primary);margin-bottom:4px;letter-spacing:-.5px;text-transform:uppercase}
 .wm-ex-meta{font-size:12.5px;color:var(--text-muted);margin-bottom:16px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.wm-set-row{display:flex;align-items:center;gap:10px;padding:14px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;transition:all .15s}
+.wm-set-row{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:8px;transition:all .15s}
 .wm-set-row.active-set{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-mid)}
 .wm-set-row.done-set{border-color:var(--lime);background:var(--lime-dim)}
 .wm-set-num{font-size:12px;font-weight:800;color:var(--text-muted);width:36px;flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
 .wm-set-prev{font-size:11px;color:var(--text-muted);font-family:var(--mono);width:60px;flex-shrink:0}
-.wm-input{font-family:var(--mono);font-size:28px;font-weight:700;width:85px;text-align:center;padding:12px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)}
+.wm-input{font-family:var(--mono);font-size:26px;font-weight:700;width:80px;text-align:center;padding:9px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)}
 .wm-input:focus{border-color:var(--orange);outline:none;box-shadow:0 0 0 2px var(--orange-mid)}
 .wm-input-label{font-size:9.5px;font-weight:800;color:var(--text-muted);text-align:center;margin-top:2px;text-transform:uppercase;letter-spacing:1px}
-.wm-check-btn{width:56px;height:56px;border-radius:50%;border:2.5px solid var(--border-strong);background:none;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;flex-shrink:0;transition:all .15s;margin-left:auto;color:var(--text-muted)}
+.wm-check-btn{width:46px;height:46px;border-radius:50%;border:2px solid var(--border-strong);background:none;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;flex-shrink:0;transition:all .15s;margin-left:auto;color:var(--text-muted)}
 .wm-check-btn.done{background:var(--lime);border-color:var(--lime);color:#0D0D0F;font-weight:900}
 .wm-footer{background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:8px;flex-shrink:0}
 
@@ -565,10 +565,10 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
       <div id="coach-nav-section" style="display:none">
         <div class="sidebar-section">Coaching</div>
         <button class="nav-item" onclick="nav('athletes',this)"><span class="icon">👥</span>Athletes<span id="athletes-badge" style="display:none;margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--lime);flex-shrink:0"></span></button>
-        <button class="nav-item" onclick="nav('templates',this)"><span class="icon">📁</span>Templates</button>
         <button class="nav-item" onclick="nav('library',this)"><span class="icon">📚</span>Exercise Library</button>
         <button class="nav-item" onclick="nav('assign',this)"><span class="icon">📤</span>Assign Workout</button>
       </div>
+      <button class="nav-item" onclick="nav('templates',this)"><span class="icon">📁</span>Templates</button>
       <div class="sidebar-section">Support</div>
       <button class="nav-item" onclick="nav('help',this)"><span class="icon">❓</span>How to Use</button>
       <button class="nav-item" onclick="nav('settings',this)"><span class="icon">⚙️</span>Settings</button>
@@ -673,7 +673,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
     <div class="view" id="view-programs">
       <div class="view-header">
         <div class="view-title">Programs</div>
-        <button class="btn btn-white btn-sm" id="new-prog-btn" onclick="openCreateProgram(false)" style="display:none">+ Custom</button>
+        <button class="btn btn-white btn-sm" id="new-prog-btn" onclick="openCreateProgram(false)">+ Custom</button>
       </div>
       <div class="view-body pad-bottom">
         <div id="active-prog-card" style="margin-bottom:16px"></div>
@@ -818,10 +818,10 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
       <div id="more-menu-coach" style="display:none">
         <div style="padding:10px 16px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)">Coaching</div>
         <button class="more-menu-item" onclick="nav('athletes');closeMoreMenu()"><span>👥</span>Athletes</button>
-        <button class="more-menu-item" onclick="nav('templates');closeMoreMenu()"><span>📁</span>Templates</button>
         <button class="more-menu-item" onclick="nav('library');closeMoreMenu()"><span>📚</span>Exercise Library</button>
         <button class="more-menu-item" onclick="nav('assign');closeMoreMenu()"><span>📤</span>Assign Workout</button>
       </div>
+      <button class="more-menu-item" onclick="nav('templates');closeMoreMenu()"><span>📁</span>Templates</button>
       <button class="more-menu-item" onclick="nav('builder');closeMoreMenu()"><span>🏗️</span>Workout Builder</button>
       <div style="padding:10px 16px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)">Account</div>
       <button class="more-menu-item" onclick="nav('settings');closeMoreMenu()"><span>⚙️</span>Settings</button>
@@ -1093,7 +1093,6 @@ function enterApp() {
   document.getElementById('sidebar-role').textContent = currentUser.role === 'admin' ? '👑 Admin' : '🏃 Athlete';
   // Show admin-only buttons
   if (currentUser.role === 'admin') {
-    document.getElementById('new-prog-btn').style.display = '';
     document.getElementById('coach-nav-section').style.display = '';
     const mobileCoach = document.getElementById('more-menu-coach');
     if (mobileCoach) mobileCoach.style.display = '';
@@ -1133,6 +1132,45 @@ function nav(view, btn) {
 }
 
 // ═══════════════════════════════════════════════════
+// QUERY FILTERS — visibility rules for programs and templates
+// ═══════════════════════════════════════════════════
+function getProgFilter() {
+  // Admin sees all programs
+  if (currentUser?.role === 'admin') return '?select=*';
+  // Athletes see: presets + their own custom programs
+  // Coach-assigned programs are loaded separately via program_assignments
+  // so this filter covers the Programs grid display
+  return `?select=*&or=(is_preset.eq.true,created_by.eq.${currentUser.id})`;
+}
+
+async function getVisiblePrograms() {
+  // For athletes: get filtered programs PLUS any programs they're assigned to
+  if (currentUser?.role === 'admin') {
+    return await db('programs','GET',null,'?select=*');
+  }
+  const [filtered, assigns] = await Promise.all([
+    db('programs','GET',null,getProgFilter()),
+    db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=program_id`)
+  ]);
+  const assignedIds = (assigns||[]).map(a=>a.program_id);
+  // Fetch any assigned programs not already in filtered list
+  const filteredIds = new Set((filtered||[]).map(p=>p.id));
+  const missingIds = assignedIds.filter(id=>!filteredIds.has(id));
+  let extras = [];
+  if (missingIds.length) {
+    extras = await db('programs','GET',null,`?id=in.(${missingIds.join(',')})&select=*`) || [];
+  }
+  return [...(filtered||[]), ...extras];
+}
+
+function getTemplateFilter() {
+  // Admin sees all templates
+  if (currentUser?.role === 'admin') return '?select=*&order=name';
+  // Athletes see only their own
+  return `?select=*&created_by=eq.${currentUser.id}&order=name`;
+}
+
+// ═══════════════════════════════════════════════════
 // CALENDAR
 // ═══════════════════════════════════════════════════
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1163,7 +1201,7 @@ async function renderCalendar() {
     const queryEnd   = (() => { const d = new Date(endDate+'T12:00:00');   d.setDate(d.getDate()+6); return d.toISOString().slice(0,10); })();
     const [wkts, progs, assigns, assigned, overrides] = await Promise.all([
       db('workouts','GET',null,`?user_id=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
-      db('programs','GET',null,`?select=*`),
+      db('programs','GET',null,getProgFilter()),
       db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=*`),
       db('workout_assignments','GET',null,`?assigned_to=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
       db('workout_schedule_overrides','GET',null,`?user_id=eq.${currentUser.id}&select=*`).catch(()=>[])
@@ -2788,7 +2826,7 @@ async function renderPrograms(){
   const isAdmin=currentUser.role==='admin';
   try{
     const [progs, assigns]=await Promise.all([
-      db('programs','GET',null,'?select=*'),
+      getVisiblePrograms(),
       db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=*`)
     ]);
     // Cache globally so activateProgram can look up weeks/name
@@ -2873,7 +2911,7 @@ async function renderPrograms(){
           <span>📅 ${p.weeks}wk</span>
           <span>💪 ${(p.schedule||[]).length}d/wk</span>
         </div>
-        ${(!p.is_preset&&isAdmin)?`<div style="margin-top:10px;display:flex;gap:6px">
+        ${(!p.is_preset && (isAdmin || p.created_by===currentUser.id))?`<div style="margin-top:10px;display:flex;gap:6px">
           <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openEditProgram('${p.id}')">✏ Edit</button>
           <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();deleteProgram('${p.id}')">Delete</button>
         </div>`:''}
@@ -3636,6 +3674,11 @@ async function renderAthleteDetail(athlete, body) {
           <div style="font-size:12px;color:var(--text-muted)">Loading...</div>
         </div>
       </div>
+      <!-- Athlete's custom programs & templates (admin view) -->
+      <div class="coach-section" id="athlete-custom-content-${athlete.id}">
+        <div class="coach-section-title">📁 Custom Programs & Templates</div>
+        <div id="athlete-custom-body-${athlete.id}" style="color:var(--text-muted);font-size:13px;padding:10px 0">Loading...</div>
+      </div>
       <div class="coach-section">
         <div class="coach-section-title">Recent Workouts</div>
         ${recentHtml||'<div style="color:var(--text-muted);font-size:13px;padding:10px 0">No workouts logged yet</div>'}
@@ -3682,6 +3725,9 @@ async function renderAthleteDetail(athlete, body) {
     const goalNow = new Date();
     const goalData = await updateMonthlyGoal(athlete.id, goalNow.getFullYear(), goalNow.getMonth());
     renderAthleteGoalDetail(athlete.id, goalData);
+
+    // Load athlete's custom programs & templates
+    renderAthleteCustomContent(athlete.id);
 
   } catch(e) { body.innerHTML='<div class="error-msg">Could not load athlete data</div>'; console.error(e); }
 }
@@ -4377,7 +4423,10 @@ function initSetSwipe() {
     const dx = indicator ? parseInt(indicator.style.width) : 0;
     if (dx >= 60) {
       // Swipe was far enough — toggle the set
+      // Set flag to prevent nav swipe from also firing on this same touch event
+      window._setSwipeConsumed = true;
       wmToggleSet(_swipeEi, _swipeSi);
+      setTimeout(() => { window._setSwipeConsumed = false; }, 100);
     } else if (indicator) {
       indicator.style.width = '0';
       setTimeout(() => indicator.remove(), 150);
@@ -4411,9 +4460,11 @@ function wmToggleCardio(ei){
   }, {passive:true});
   document.addEventListener('touchend', e=>{
     if(!document.getElementById('workout-mode').classList.contains('show')) return;
+    // Don't fire if a set-row swipe just consumed this gesture
+    if(window._setSwipeConsumed) return;
     // Don't swipe if touching an input, button, or the nav pills
     const target=e.target;
-    if(target.closest('input,button,select,textarea,.wm-exercise-nav')) return;
+    if(target.closest('input,button,select,textarea,.wm-exercise-nav,.wm-set-row')) return;
     const t=e.changedTouches[0];
     const dx=t.clientX-touchStartX;
     const dy=t.clientY-touchStartY;
@@ -5189,14 +5240,10 @@ function renderHelp() {
       <div class="help-card">
         <div class="help-card-title">📁 Workout Templates</div>
         <div class="help-card-body">
-          Templates are reusable workout blueprints — build them once, use them everywhere. Find them under <strong>Templates</strong> in the Coaching section of the sidebar.
+          Templates are reusable workout blueprints. Coaches can create templates and load them into programs. Athletes can save workouts from the Workout Builder as templates for personal reuse.
           <br><br>
-          Each template has the same three-section structure (Warm-Up / Main / Cool Down) with exercises, sets, reps, and optional coach notes. Once saved, templates connect to the rest of the app in two ways:
-          <ul>
-            <li><strong>In the program builder</strong> — each day has a <strong>📁 Load from Template</strong> button. Tap it, pick a template, and it fills all exercises, sets, reps, and coach notes for that day.</li>
-            <li><strong>In Assign Workout</strong> — a <strong>📁 Load from Template</strong> button pre-fills the whole workout form so you're not rebuilding from scratch each time.</li>
-          </ul>
-          <div class="help-tip"><span>💡</span><div>Build your templates first, then use them to assemble programs in minutes.</div></div>
+          Templates are <strong>private by default</strong> — each user only sees their own. Coaches can view all athletes' templates from the Athletes dashboard.
+          <div class="help-tip"><span>💡</span><div>Build your best workouts once as templates, then reuse them whenever you want without rebuilding from scratch.</div></div>
         </div>
       </div>
 
@@ -5249,6 +5296,26 @@ function renderHelp() {
     <!-- FOR ATHLETES -->
     <div class="help-section">
       <div class="help-section-title">🏃 For Athletes</div>
+
+      <div class="help-card">
+        <div class="help-card-title">🏗️ Build your own programs</div>
+        <div class="help-card-body">
+          On the <strong>Programs</strong> page, tap <strong>+ Custom</strong> to create your own multi-week program. Add workout days, exercises, sets, reps, and a duration — then activate it for yourself. Great for training between coached programs or building your own routine.
+          <br><br>
+          You can only see and edit programs you created — other athletes can't see yours and you can't see theirs. Your coach can view your custom programs from the Athletes dashboard.
+        </div>
+      </div>
+
+      <div class="help-card">
+        <div class="help-card-title">💾 Saving & loading workout templates</div>
+        <div class="help-card-body">
+          When the <strong>Workout Builder</strong> generates a workout you like, tap <strong>💾 Save</strong> to keep it as a reusable template. Name it something memorable like "My Push Day."
+          <br><br>
+          To use a saved template later, open the Workout Builder and tap <strong>📁 Load a Saved Template</strong> below the Generate button. Pick your template and it opens in the log modal ready to train. You can also browse your saved templates from the <strong>Templates</strong> page in the sidebar.
+          <div class="help-tip"><span>💡</span><div>Templates are private — only you and your coach can see them.</div></div>
+        </div>
+      </div>
+
       <div class="help-card">
         <div class="help-card-title">📤 Coach-assigned workouts</div>
         <div class="help-card-body">
@@ -5301,8 +5368,16 @@ function renderHelp() {
             <div class="help-step"><div class="help-step-num">3</div><div class="help-step-text"><strong>Equipment</strong> — select one or more. Full Gym is single-select (includes everything). Dumbbells, Bodyweight, Bands, and Barbell can be combined — great for home gyms. The workout only uses exercises matching your available equipment.</div></div>
             <div class="help-step"><div class="help-step-num">4</div><div class="help-step-text"><strong>Time</strong> — 20, 30, 45, or 60 minutes. Exercise count and sets are scaled to fit.</div></div>
           </div>
-          Tap <strong>⚡ Generate My Workout</strong> — a complete structured workout appears. Preview it, then tap <strong>📋 Log This Workout</strong> to load it straight into today's log.
-          <div class="help-tip"><span>💡</span><div>Tap Regenerate to get a different variation. The builder avoids repeating the same movement pattern — you won't get Bench Press + DB Bench Press in the same chest workout.</div></div>
+          Tap <strong>⚡ Generate My Workout</strong> — a complete structured workout appears with three options:
+          <br><br>
+          <strong>📋 Log This Workout</strong> — opens it in the log modal to start training now.
+          <br>
+          <strong>💾 Save</strong> — saves as a reusable template you can load anytime.
+          <br>
+          <strong>🔄</strong> — regenerates a different variation.
+          <br><br>
+          Below the Generate button you'll also find <strong>📁 Load a Saved Template</strong> — pick from your previously saved workouts without generating a new one.
+          <div class="help-tip"><span>💡</span><div>The builder avoids repeating the same movement pattern — you won't get Bench Press + DB Bench Press in the same chest workout.</div></div>
         </div>
       </div>
       <div class="help-card">
@@ -5596,7 +5671,7 @@ function hookExAutocomplete(inputEl, dropEl) {
 let _templates = [];
 
 async function renderTemplates() {
-  if (currentUser.role !== 'admin') return;
+  const isAdmin = currentUser.role === 'admin';
   const body = document.getElementById('templates-body');
   body.innerHTML = '<div class="loading">Loading templates...</div>';
   try {
@@ -5607,8 +5682,8 @@ async function renderTemplates() {
       body.innerHTML = `<div class="empty-state">
         <span class="emo">📁</span>
         <h3>No templates yet</h3>
-        <p>Build reusable workout blueprints you can load into programs or assign to athletes.</p>
-        <button class="btn btn-primary btn-sm" onclick="openCreateTemplate()">+ New Template</button>
+        <p>${isAdmin ? 'Build reusable workout blueprints you can load into programs or assign to athletes.' : 'Save workouts from the Workout Builder to reuse them anytime.'}</p>
+        ${isAdmin ? '<button class="btn btn-primary btn-sm" onclick="openCreateTemplate()">+ New Template</button>' : '<button class="btn btn-primary btn-sm" onclick="nav(\'builder\')">Open Workout Builder</button>'}
       </div>`;
       return;
     }
@@ -5624,13 +5699,26 @@ async function renderTemplates() {
             ${t.coach_notes?`<div style="font-size:11.5px;color:var(--purple);margin-top:4px">📝 ${t.coach_notes.slice(0,60)}${t.coach_notes.length>60?'...':''}</div>`:''}
           </div>
           <div style="display:flex;gap:5px;flex-shrink:0">
-            <button class="btn btn-white btn-xs" onclick="openEditTemplate('${t.id}')">Edit</button>
+            <button class="btn btn-primary btn-xs" onclick="loadTemplateWorkout('${t.id}')">Log</button>
+            ${isAdmin ? `<button class="btn btn-white btn-xs" onclick="openEditTemplate('${t.id}')">Edit</button>` : ''}
             <button class="btn btn-danger btn-xs" onclick="deleteTemplate('${t.id}')">✕</button>
           </div>
         </div>
       </div>`;
     }).join('');
   } catch(e) { body.innerHTML = '<div class="error-msg">Could not load templates</div>'; }
+}
+
+function loadTemplateWorkout(templateId) {
+  const t = (_templates||[]).find(x=>x.id===templateId);
+  if (!t) { toast('Template not found'); return; }
+  const workout = {
+    workout_name: t.name,
+    warmup: (t.warmup||[]).map(e=>typeof e==='string'?{name:e,sets:'',reps:''}:e),
+    exercises: (t.exercises||[]).map(e=>typeof e==='string'?{name:e,sets:'3',reps:'8-12'}:e),
+    cooldown: (t.cooldown||[]).map(e=>typeof e==='string'?{name:e,sets:'',reps:''}:e),
+  };
+  loadBuilderWorkout(workout);
 }
 
 function openCreateTemplate() {
@@ -6728,7 +6816,8 @@ function renderWorkoutBuilder() {
       </div>
     </div>
     <div id="builder-generate-area" style="display:none">
-      <button class="btn btn-primary btn-full" style="margin-bottom:12px" onclick="generateWorkout()">⚡ Generate My Workout</button>
+      <button class="btn btn-primary btn-full" style="margin-bottom:8px" onclick="generateWorkout()">⚡ Generate My Workout</button>
+      <button class="btn btn-ghost btn-full btn-sm" onclick="openLoadTemplate()">📁 Load a Saved Template</button>
     </div>
     <div id="builder-result"></div>`;
 }
@@ -7006,9 +7095,105 @@ function renderBuilderResult(workout) {
       ${cooldownHtml?`<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;margin-top:10px">Cool Down</div>${cooldownHtml}`:''}
       <div style="display:flex;gap:8px;margin-top:14px">
         <button class="btn btn-primary" style="flex:1" onclick="loadBuilderWorkout(${JSON.stringify(workout).replace(/"/g,'&quot;')})">📋 Log This Workout</button>
-        <button class="btn btn-white btn-sm" onclick="generateWorkout()">Regenerate</button>
+        <button class="btn btn-white btn-sm" onclick="saveBuilderWorkout(${JSON.stringify(workout).replace(/"/g,'&quot;')})">💾 Save</button>
+        <button class="btn btn-white btn-sm" onclick="generateWorkout()">🔄</button>
       </div>
     </div>`;
+}
+
+async function openLoadTemplate() {
+  try {
+    const templates = await db('workout_templates','GET',null,getTemplateFilter());
+    if (!templates?.length) {
+      toast('No saved templates yet — generate a workout and tap 💾 Save to create one');
+      return;
+    }
+    document.getElementById('modal-title').textContent = '📁 Load Template';
+    document.getElementById('modal-body').innerHTML = `
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">Pick a saved workout template to log today.</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto">
+        ${templates.map(t => {
+          const exCount = (t.exercises||[]).length;
+          const warmCount = (t.warmup||[]).length;
+          const coolCount = (t.cooldown||[]).length;
+          return `<button class="btn btn-white" style="text-align:left;padding:12px;justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:4px"
+            onclick="loadTemplateToLog('${t.id}')">
+            <div style="font-weight:700;font-size:14px">${t.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${exCount} exercise${exCount!==1?'s':''} · ${warmCount} warmup · ${coolCount} cooldown</div>
+            ${t.description?`<div style="font-size:11px;color:var(--text-muted);font-style:italic">${t.description}</div>`:''}
+          </button>`;
+        }).join('')}
+      </div>`;
+    document.getElementById('modal-footer').innerHTML = `
+      <button class="btn btn-ghost btn-full" onclick="closeModal()">Cancel</button>`;
+    showModal();
+  } catch(e) { toast('Could not load templates'); console.error(e); }
+}
+
+async function loadTemplateToLog(templateId) {
+  try {
+    const rows = await db('workout_templates','GET',null,`?id=eq.${templateId}&select=*`);
+    const tmpl = rows?.[0];
+    if (!tmpl) { toast('Template not found'); return; }
+    closeModal();
+
+    // Convert template into builder workout format and load into log modal
+    const workout = {
+      workout_name: tmpl.name,
+      warmup: (tmpl.warmup||[]).map(e=>({name:e.name||'',sets:e.sets||'',reps:e.reps||''})),
+      exercises: (tmpl.exercises||[]).map(e=>({name:e.name||'',sets:e.sets||'',reps:e.reps||''})),
+      cooldown: (tmpl.cooldown||[]).map(e=>({name:e.name||'',sets:e.sets||'',reps:e.reps||''})),
+    };
+    loadBuilderWorkout(workout);
+  } catch(e) { toast('Load failed'); console.error(e); }
+}
+
+async function saveBuilderWorkout(workout) {
+  const defaultName = workout.workout_name || 'Custom Workout';
+  document.getElementById('modal-title').textContent = '💾 Save Workout';
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      Save this workout as a template you can reuse anytime. Find it later under <strong>Templates</strong>.
+    </div>
+    <div class="field">
+      <label>Template Name</label>
+      <input id="builder-save-name" type="text" value="${defaultName}"
+        style="font-size:15px;padding:10px;font-family:var(--font)">
+    </div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="confirmSaveBuilderWorkout()">Save Template</button>`;
+  // Stash the workout data for the confirm handler
+  window._pendingBuilderSave = workout;
+  showModal();
+}
+
+async function confirmSaveBuilderWorkout() {
+  const workout = window._pendingBuilderSave;
+  if (!workout) { toast('No workout to save'); return; }
+  const name = document.getElementById('builder-save-name')?.value?.trim();
+  if (!name) { toast('Enter a name'); return; }
+
+  const normalizeEx = arr => (arr||[]).map(e=>({name:e.name||'',sets:e.sets||'',reps:e.reps||''})).filter(e=>e.name);
+  const payload = {
+    name,
+    description: `Generated by Workout Builder`,
+    warmup: normalizeEx(workout.warmup),
+    exercises: normalizeEx(workout.exercises),
+    cooldown: normalizeEx(workout.cooldown),
+    coach_notes: '',
+    created_by: currentUser.id
+  };
+
+  try {
+    await db('workout_templates','POST',payload);
+    closeModal();
+    window._pendingBuilderSave = null;
+    toast(`Saved as "${name}" ✓`);
+  } catch(e) {
+    toast('Save failed — try again');
+    console.error(e);
+  }
 }
 
 function loadBuilderWorkout(workout) {
@@ -7199,6 +7384,34 @@ async function confirmSetAthleteGoal(userId) {
   } catch(e) { toast('Update failed'); console.error(e); }
 }
 
+async function renderAthleteCustomContent(athleteId) {
+  const container = document.getElementById(`athlete-custom-body-${athleteId}`);
+  if (!container) return;
+  try {
+    const [progs, templates] = await Promise.all([
+      db('programs','GET',null,`?created_by=eq.${athleteId}&is_preset=eq.false&select=id,name,weeks,schedule,tag`),
+      db('workout_templates','GET',null,`?created_by=eq.${athleteId}&select=id,name,exercises,warmup,cooldown`)
+    ]);
+    let html = '';
+    if ((progs||[]).length) {
+      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:6px">Programs</div>`;
+      html += (progs||[]).map(p => `<div style="padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px">
+        <div style="font-weight:700;font-size:13px;color:var(--text-primary)">${p.name}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${p.weeks||'?'}wk · ${(p.schedule||[]).length}d/wk · ${p.tag||'Custom'}</div>
+      </div>`).join('');
+    }
+    if ((templates||[]).length) {
+      html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin:10px 0 6px">Templates</div>`;
+      html += (templates||[]).map(t => `<div style="padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px">
+        <div style="font-weight:700;font-size:13px;color:var(--text-primary)">${t.name}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${(t.exercises||[]).length} exercises · ${(t.warmup||[]).length} warmup · ${(t.cooldown||[]).length} cooldown</div>
+      </div>`).join('');
+    }
+    if (!html) html = '<div style="font-size:12.5px;color:var(--text-muted);font-style:italic">No custom programs or templates created yet</div>';
+    container.innerHTML = html;
+  } catch(e) { container.innerHTML = '<div style="color:var(--text-muted);font-size:12px">Could not load</div>'; }
+}
+
 async function renderAthleteGoalDetail(userId, data) {
   const container = document.getElementById(`athlete-goal-detail-${userId}`);
   if (!container || !data) return;
@@ -7387,8 +7600,13 @@ const TOUR_STEPS = [
     target: null,
   },
   {
+    title: 'Build & Save Workouts',
+    desc: 'Use the Workout Builder to generate custom workouts. Tap Save to keep ones you like as reusable templates. You can also build your own multi-week programs from the Programs page.',
+    target: null,
+  },
+  {
     title: 'You\'re all set! 💪',
-    desc: 'That\'s the basics. Explore Programs to see your training plan, and check Progress to watch your strength grow over time. You can replay this tour anytime from Settings.',
+    desc: 'That\'s the basics. Explore Programs to see your training plan, check Progress to watch your strength grow, and find Settings to replay this tour anytime.',
     target: null,
   }
 ];
