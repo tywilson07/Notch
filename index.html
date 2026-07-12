@@ -144,7 +144,7 @@ label{font-size:11px;font-weight:800;color:var(--text-muted);display:block;margi
 .cal-cell.other-month{background:var(--bg)}
 .cal-cell.drag-over{background:var(--lime-dim)!important;outline:2px dashed var(--lime);outline-offset:-3px}
 .cal-day-num{font-size:12px;font-weight:700;color:var(--text-secondary);width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;flex-shrink:0}
-.cal-workout-dot{font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.2px}
+.cal-workout-dot{font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;margin-bottom:2px;white-space:normal;overflow:hidden;word-break:break-word;line-height:1.2;letter-spacing:.2px}
 .cal-dot-logged-full{background:var(--lime-dim);color:var(--lime);cursor:grab;display:block;border:1px solid var(--lime)30}
 .cal-dot-logged-partial{background:var(--amber-light);color:var(--amber);cursor:grab;display:block;border:1px solid var(--amber)30}
 .cal-dot-logged-full:active,.cal-dot-logged-partial:active{cursor:grabbing;opacity:.5}
@@ -7309,8 +7309,15 @@ function generateWorkoutLocal() {
   const CD_DEF=['Child Pose','Hip Flexor Stretch','Chest Stretch','Pigeon Stretch'];
   while(cooldownExs.length<2) cooldownExs.push(CD_DEF[cooldownExs.length]);
 
+  // Build a short, clean workout name for the calendar
+  const goalShort = {'Strength':'Strength','Hypertrophy':'Hypertrophy','Full Body':'Full Body','Cardio':'Cardio','Mobility':'Mobility'}[goal]||goal;
+  const focusShort = focusArr.length <= 2 ? focusArr.join('/') : focusArr.slice(0,2).join('/') + '+';
+  const workoutName = (goal==='Full Body'||goal==='Cardio'||goal==='Mobility')
+    ? `${goalShort} Day`
+    : `${focusShort} ${goalShort}`;
+
   const workout = {
-    workout_name: `${focusLabel} ${goal} — ${duration}`,
+    workout_name: workoutName,
     warmup: warmupExs.map(name=>({name,sets:'',reps:''})),
     exercises: mainExs.map(ex=>({name:ex.name,sets:defaultSetRep.sets,reps:defaultSetRep.reps,notes:muscleNotes[ex.muscle_group]||''})),
     cooldown: cooldownExs.map(name=>({name,sets:'',reps:''}))
