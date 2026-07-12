@@ -1586,7 +1586,7 @@ async function renderDayPanel(ds) {
       }
       if (ex.type==='carry') {
         const c = ex.carry||{};
-        const info = [c.sets?`${c.sets} sets`:'', c.weight?`${c.weight}lb`:'', c.dist?`${c.dist}m`:''].filter(Boolean).join(' · ');
+        const info = [c.sets?`${c.sets} sets`:'', c.weight?`${c.weight}lb`:'', c.dist?`${c.dist}${c.unit||'ft'}`:''].filter(Boolean).join(' · ');
         return `<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0">
           <div style="font-size:12px;font-weight:700;color:var(--text-secondary)">${ex.name}</div>
           <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted)">${info||'—'} ${c.done?'<span style="color:var(--lime);font-weight:700">✓</span>':''}</div>
@@ -2274,6 +2274,8 @@ function buildStrengthInner(ex,ei){
 
 function buildCarryInner(ex,ei){
   const c=ex.carry||{};
+  const unit=_carryUnit||'ft';
+  const placeholder=unit==='ft'?'50':'15';
   return `
     <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px">
       <div>
@@ -2283,10 +2285,16 @@ function buildCarryInner(ex,ei){
           style="font-family:var(--mono);font-size:20px;font-weight:700;width:90px;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)">
       </div>
       <div>
-        <div style="font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Distance (m/ft)</div>
-        <input type="number" value="${c.dist||''}" placeholder="40"
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Distance</div>
+          <div style="display:flex;gap:2px;margin-left:6px">
+            <button onclick="setCarryUnit('ft')" style="font-size:9px;font-weight:800;padding:2px 5px;border-radius:3px;border:1px solid ${unit==='ft'?'var(--orange)':'var(--border)'};background:${unit==='ft'?'var(--orange-dim)':'none'};color:${unit==='ft'?'var(--orange)':'var(--text-muted)'};cursor:pointer">ft</button>
+            <button onclick="setCarryUnit('m')" style="font-size:9px;font-weight:800;padding:2px 5px;border-radius:3px;border:1px solid ${unit==='m'?'var(--orange)':'var(--border)'};background:${unit==='m'?'var(--orange-dim)':'none'};color:${unit==='m'?'var(--orange)':'var(--text-muted)'};cursor:pointer">m</button>
+          </div>
+        </div>
+        <input type="number" value="${c.dist||''}" placeholder="${placeholder}"
           data-carry="dist" oninput="syncCarry(${ei},'dist',this.value)"
-          style="font-family:var(--mono);font-size:20px;font-weight:700;width:90px;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)">
+          style="font-family:var(--mono);font-size:20px;font-weight:700;width:100px;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);background:var(--surface3);color:var(--text-primary)">
       </div>
       <div>
         <div style="font-size:9.5px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Sets</div>
@@ -2298,6 +2306,22 @@ function buildCarryInner(ex,ei){
     <button onclick="toggleCarryDone(${ei})" style="width:100%;padding:10px;border-radius:var(--radius);border:2px solid ${c.done?'var(--lime)':'var(--border-strong)'};background:${c.done?'var(--lime-dim)':'none'};color:${c.done?'var(--lime)':'var(--text-muted)'};font-size:14px;font-weight:700;cursor:pointer;transition:all .15s">
       ${c.done?'✓ Done':'Mark Done'}
     </button>`;
+}
+
+function setCarryUnit(unit) {
+  _carryUnit = unit;
+  // Save current inputs then re-render the current exercise block
+  const blocks = document.querySelectorAll('[id^="ex-block-"]');
+  blocks.forEach(block => {
+    const ei = parseInt(block.id.replace('ex-block-',''));
+    if (_logExercises[ei]?.type === 'carry') {
+      ['weight','dist','sets'].forEach(f=>{
+        const inp=block.querySelector(`input[data-carry="${f}"]`);
+        if(inp)_logExercises[ei].carry[f]=inp.value;
+      });
+      block.outerHTML = buildExBlock(_logExercises[ei], ei);
+    }
+  });
 }
 
 function syncCarry(ei,field,val){if(_logExercises[ei]?.carry)_logExercises[ei].carry[field]=val;}
@@ -2489,7 +2513,7 @@ async function saveLog(){
       name:ex.name, type:ex.type, section:ex.section||'main',
       sets:ex.type==='strength'?(ex.sets||[]).filter(s=>s.w||s.r).map(s=>({...s})):null,
       cardio:ex.type==='cardio'?{...ex.cardio}:null,
-      carry:ex.type==='carry'?{...ex.carry}:null,
+      carry:ex.type==='carry'?{...ex.carry, unit:_carryUnit||'ft'}:null,
       done:ex.type==='simple'?ex.done:undefined
     })),notes,warmup_notes,main_notes,cooldown_notes,result};
   try {
@@ -4392,7 +4416,13 @@ function buildWMCarry(ex,ei){
             style="width:95px;font-size:26px;padding:9px 4px">
         </div>
         <div style="text-align:center">
-          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px">Distance</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted)">Distance</div>
+            <div style="display:flex;gap:3px">
+              <button onclick="setCarryUnit('ft');renderWorkoutMode()" style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;border:1px solid ${(_carryUnit||'ft')==='ft'?'var(--orange)':'var(--border)'};background:${(_carryUnit||'ft')==='ft'?'var(--orange-dim)':'none'};color:${(_carryUnit||'ft')==='ft'?'var(--orange)':'var(--text-muted)'};cursor:pointer">ft</button>
+              <button onclick="setCarryUnit('m');renderWorkoutMode()" style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;border:1px solid ${(_carryUnit||'ft')==='m'?'var(--orange)':'var(--border)'};background:${(_carryUnit||'ft')==='m'?'var(--orange-dim)':'none'};color:${(_carryUnit||'ft')==='m'?'var(--orange)':'var(--text-muted)'};cursor:pointer">m</button>
+            </div>
+          </div>
           <input class="wm-input" type="number" value="${c.dist||''}" placeholder="40"
             oninput="_logExercises[${ei}].carry.dist=this.value"
             style="width:95px;font-size:26px;padding:9px 4px">
@@ -6577,6 +6607,7 @@ async function updateAthleteBadge() {
 // EXERCISE LIBRARY VIEW
 // ═══════════════════════════════════════════════════
 let _libraryFilter = 'All';
+let _carryUnit = 'ft'; // 'ft' or 'm' — user preference for carry distance
 
 async function renderExerciseLibrary() {
   if (currentUser.role !== 'admin') { nav('calendar'); return; }
@@ -6594,7 +6625,7 @@ let _librarySearch = '';
 
 function renderLibraryList() {
   const body = document.getElementById('library-body');
-  const groups = ['All','Chest','Back','Legs','Shoulders','Biceps','Triceps','Core','Cardio','Warmup','Cooldown'];
+  const groups = ['All','Chest','Back','Legs','Shoulders','Biceps','Triceps','Core','Carries','Cardio','Warmup','Cooldown'];
 
   // Apply muscle group filter
   let filtered = _libraryFilter==='All'
