@@ -876,7 +876,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
   <div class="wm-exercise-nav" id="wm-ex-nav"></div>
   <!-- Timer (hidden when not running) -->
 <!-- Current exercise body -->
-  <div class="wm-body" id="wm-body"></div>
+  <div class="wm-body" id="wm-body" oninput="saveDraft()"></div>
   <!-- Notes panel (collapsible) -->
   <div id="wm-notes-panel" style="display:block;padding:8px 16px;background:var(--surface);border-top:1px solid var(--border)">
     <div id="wm-prev-notes-hint"></div>
@@ -928,7 +928,7 @@ button.set-type-btn.active[onclick*="assisted"]{background:var(--purple);border-
       <div class="modal-title" id="modal-title"></div>
       <button class="close-btn" onclick="closeModal()">✕</button>
     </div>
-    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-body" id="modal-body" oninput="saveDraft()"></div>
     <div class="modal-footer" id="modal-footer"></div>
   </div>
 </div>
@@ -1210,9 +1210,10 @@ async function renderCalendar() {
     // Extend query by 6 days either side so workouts on boundary days (e.g. moved to June 30 while viewing July) always load
     const queryStart = (() => { const d = new Date(startDate+'T12:00:00'); d.setDate(d.getDate()-6); return d.toISOString().slice(0,10); })();
     const queryEnd   = (() => { const d = new Date(endDate+'T12:00:00');   d.setDate(d.getDate()+6); return d.toISOString().slice(0,10); })();
-    const [wkts, progs, assigns, assigned, overrides] = await Promise.all([
+    // Load programs first (getVisiblePrograms may do sequential calls for athletes)
+    const progs = await getVisiblePrograms();
+    const [wkts, assigns, assigned, overrides] = await Promise.all([
       db('workouts','GET',null,`?user_id=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
-      db('programs','GET',null,getProgFilter()),
       db('program_assignments','GET',null,`?user_id=eq.${currentUser.id}&select=*`),
       db('workout_assignments','GET',null,`?assigned_to=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
       db('workout_schedule_overrides','GET',null,`?user_id=eq.${currentUser.id}&select=*`).catch(()=>[])
@@ -1835,6 +1836,42 @@ async function calDrop(e,toDate){
 // ═══════════════════════════════════════════════════
 let _logDate=null, _logId=null, _logExercises=[], _logDayName=null, _workoutStartTime=null;
 
+// ── AUTO-SAVE: persist in-progress workout to localStorage ──
+const DRAFT_KEY = 'notch_draft_workout';
+
+function saveDraft() {
+  if (!_logDate || _logId) return; // only save new logs, not edits
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      date: _logDate,
+      dayName: _logDayName,
+      exercises: _logExercises,
+      sectionNotes: _savedSectionNotes,
+      startTime: _workoutStartTime,
+      savedAt: Date.now(),
+      userId: currentUser?.id
+    }));
+  } catch(e) { /* storage full or unavailable */ }
+}
+
+function loadDraft(date, dayName) {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    // Only restore if same user, same date, same workout name, and saved within 24hrs
+    if (draft.userId !== currentUser?.id) return null;
+    if (draft.date !== date) return null;
+    if (dayName && draft.dayName && draft.dayName !== dayName) return null;
+    if (Date.now() - draft.savedAt > 24 * 60 * 60 * 1000) return null;
+    return draft;
+  } catch(e) { return null; }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+}
+
 // ── Previous workout cache ──
 let _prevCache = {};
 let _prevNotes = '';
@@ -1975,6 +2012,36 @@ async function openLogModal(ds, suggestedName) {
   _logId    = null;
   _logDayName = suggestedName || null;
   _workoutStartTime = Date.now(); // start tracking duration
+
+  // ── Check for an in-progress draft from a previous session ──
+  const draft = loadDraft(_logDate, suggestedName);
+  if (draft && draft.exercises?.length) {
+    const resumed = await new Promise(resolve => {
+      document.getElementById('modal-title').textContent = 'Resume Workout?';
+      document.getElementById('modal-body').innerHTML = `
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">
+          You have an unfinished <strong>${draft.dayName||'workout'}</strong> from ${new Date(draft.savedAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} — ${draft.exercises.filter(e=>e.type==='strength'&&(e.sets||[]).some(s=>s.done)).length} exercises in progress.
+        </div>
+        <div style="font-size:12.5px;color:var(--text-muted)">Do you want to pick up where you left off, or start fresh?</div>`;
+      document.getElementById('modal-footer').innerHTML = `
+        <button class="btn btn-ghost" onclick="closeModal();resolve(false)">Start Fresh</button>
+        <button class="btn btn-primary" onclick="closeModal();resolve(true)">Resume</button>`;
+      // Patch resolve into scope
+      window._draftResolve = resolve;
+      document.querySelector('#modal-footer .btn-primary').onclick = () => { closeModal(); window._draftResolve(true); };
+      document.querySelector('#modal-footer .btn-ghost').onclick = () => { closeModal(); clearDraft(); window._draftResolve(false); };
+      showModal();
+    });
+    if (resumed) {
+      _logExercises = draft.exercises;
+      _savedSectionNotes = draft.sectionNotes || {warmup:'', main:'', cooldown:''};
+      _workoutStartTime = draft.startTime || Date.now();
+      await loadPrevCache();
+      renderLogModal();
+      showModal();
+      return;
+    }
+  }
   const planned = suggestedName
     ? getPlannedWorkouts(_logDate).find(p=>p.name===suggestedName) || getPlannedWorkout(_logDate)
     : getPlannedWorkout(_logDate);
@@ -2146,7 +2213,7 @@ function renderLogModal(existing) {
         style="resize:vertical;min-height:80px">${existing?.notes||''}</textarea>
     </div>`;
   document.getElementById('modal-footer').innerHTML=`
-    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-ghost" onclick="clearDraft();closeModal()">Cancel</button>
     ${_logId?'':`<button class="btn btn-ghost btn-sm" onclick="copyLastWorkout()" title="Copy weights/reps from last time">📋 Last</button>`}
     <button class="btn btn-white" onclick="startWorkoutMode()" title="Full-screen workout view">⚡ Start</button>
     <button class="btn btn-primary" onclick="saveLog()">Save Workout</button>`;
@@ -2413,6 +2480,7 @@ function toggleSet(ei,si){
   }
   if(_logExercises[ei]?.sets?.[si]) {
     _logExercises[ei].sets[si].done=!_logExercises[ei].sets[si].done;
+    saveDraft();
     // Auto-fill subsequent empty sets with this set's weight and reps
     if (_logExercises[ei].sets[si].done) {
       const w = _logExercises[ei].sets[si].w;
@@ -2465,9 +2533,9 @@ function addExercise(){
     : isCarry ? {name,type:'carry',section:'main',carry:{weight:'',dist:'',sets:'3',done:false},expanded:true}
     : {name,type:'strength',section:'main',sets:[{w:'',r:'',done:false},{w:'',r:'',done:false},{w:'',r:'',done:false}],expanded:true};
   _logExercises.push(newEx);
-  inp.value=''; renderLogModal();
+  inp.value=''; saveDraft(); renderLogModal();
 }
-function removeExercise(ei){saveSectionNotes();_logExercises.splice(ei,1);renderLogModal();}
+function removeExercise(ei){saveSectionNotes();_logExercises.splice(ei,1);saveDraft();renderLogModal();}
 
 async function saveLog(){
   if(_logExercises.length===0){toast('Add at least one exercise');return;}
