@@ -2313,8 +2313,9 @@ function buildStrengthInner(ex,ei){
         <div style="display:flex;align-items:center;gap:2px">
           <span style="font-size:10px;color:var(--text-muted);font-weight:700">BW+</span>
           <input class="set-row-input" type="number" placeholder="${wPlaceholder}" value="${s.w||''}"
-            oninput="syncSet(${ei},${si},'w',this.value)" min="0" step="2.5"
-            style="width:52px" title="Extra weight (vest, belt, etc)">
+            oninput="syncSet(${ei},${si},'w',this.value)" onfocus="this.select()"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('tr').querySelector('input:nth-of-type(2)')?.focus()}"
+            min="0" step="2.5" inputmode="numeric" style="width:52px" title="Extra weight (vest, belt, etc)">
         </div>
       </td>`;
     } else if (isAssisted) {
@@ -2322,20 +2323,25 @@ function buildStrengthInner(ex,ei){
         <div style="display:flex;align-items:center;gap:2px">
           <span style="font-size:10px;color:var(--purple);font-weight:700">−</span>
           <input class="set-row-input" type="number" placeholder="lb" value="${s.w||''}"
-            oninput="syncSet(${ei},${si},'w',this.value)" min="0" step="5"
-            style="width:52px;border-color:var(--purple)" title="Assistance weight (counterbalance)">
+            oninput="syncSet(${ei},${si},'w',this.value)" onfocus="this.select()"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('tr').querySelector('input:nth-of-type(2)')?.focus()}"
+            min="0" step="5" inputmode="numeric" style="width:52px;border-color:var(--purple)" title="Assistance weight (counterbalance)">
         </div>
       </td>`;
     } else {
       weightCell = `<td><input class="set-row-input" type="number" placeholder="${wPlaceholder}" value="${s.w||''}"
-        oninput="syncSet(${ei},${si},'w',this.value)" min="0" step="2.5"></td>`;
+        oninput="syncSet(${ei},${si},'w',this.value)" onfocus="this.select()"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('tr').querySelector('input:nth-of-type(2)')?.focus()}"
+        min="0" step="2.5" inputmode="numeric"></td>`;
     }
     return `<tr>
       <td style="color:var(--text-muted);font-size:11px;width:22px">${si+1}</td>
       <td style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-align:center">${prev||'—'}</td>
       ${weightCell}
       <td><input class="set-row-input" type="number" placeholder="${rPlaceholder}" value="${s.r||''}"
-        oninput="syncSet(${ei},${si},'r',this.value)" min="0"></td>
+        oninput="syncSet(${ei},${si},'r',this.value)" onfocus="this.select()"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+        min="0" inputmode="numeric"></td>
       <td><button class="set-done-btn ${s.done?'done':''}" onclick="toggleSet(${ei},${si})">${s.done?'✓':''}</button></td>
       <td><button onclick="removeSet(${ei},${si})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px">✕</button></td>
     </tr>`;
@@ -4463,12 +4469,20 @@ function buildWMStrength(ex,ei){
       <div class="wm-set-num">Set ${si+1}</div>
       <div class="wm-set-prev">${prev||'—'}</div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        <input class="wm-input" type="number" placeholder="${wPh}" value="${s.w||''}" oninput="wmSyncSet(${ei},${si},'w',this.value)" step="2.5" min="0" inputmode="decimal">
+        <input class="wm-input" type="number" placeholder="${wPh}" value="${s.w||''}"
+          oninput="wmSyncSet(${ei},${si},'w',this.value)"
+          onfocus="this.select()"
+          onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.closest('.wm-set-row').querySelectorAll('.wm-input')[1]?.focus()}"
+          step="2.5" min="0" inputmode="numeric">
         <div class="wm-input-label">Weight</div>
       </div>
       <div style="color:var(--text-muted);font-size:18px;font-weight:300">×</div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        <input class="wm-input" type="number" placeholder="${rPh}" value="${s.r||''}" oninput="wmSyncSet(${ei},${si},'r',this.value)" min="0" inputmode="decimal">
+        <input class="wm-input" type="number" placeholder="${rPh}" value="${s.r||''}"
+          oninput="wmSyncSet(${ei},${si},'r',this.value)"
+          onfocus="this.select()"
+          onkeydown="if(event.key==='Enter'||event.key==='Next'){event.preventDefault();this.blur();}"
+          min="0" inputmode="numeric">
         <div class="wm-input-label">Reps</div>
       </div>
       <button class="wm-check-btn ${s.done?'done':''}" onclick="wmToggleSet(${ei},${si})">${s.done?'✓':''}</button>
