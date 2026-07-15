@@ -1423,14 +1423,14 @@ function setCalView(view) {
   // Hide week strip in week view (redundant)
   document.getElementById('week-strip').style.display = view==='month' ? '' : 'none';
   if (view==='week') {
-    // Set week start to the week containing selectedDate
     const d = new Date(selectedDate+'T12:00:00');
-    d.setDate(d.getDate() - d.getDay()); // go to Sunday
+    d.setDate(d.getDate() - d.getDay());
     _weekStart = d.toISOString().slice(0,10);
-    buildWeekView();
+    if (_calMode==='athletes' && currentUser?.role==='admin' && _activeAthleteId) buildAthleteWeekView();
+    else buildWeekView();
   } else {
-    buildCalGrid();
-    buildWeekStrip();
+    if (_calMode==='athletes' && currentUser?.role==='admin') { buildAthleteCalGrid(); buildAthleteWeekStrip(); }
+    else { buildCalGrid(); buildWeekStrip(); }
   }
   // Update header label
   updateCalHeader();
@@ -1438,14 +1438,13 @@ function setCalView(view) {
 
 function shiftCal(delta) {
   if (_calView === 'week') {
-    // Shift by 1 week
     const d = new Date(_weekStart+'T12:00:00');
     d.setDate(d.getDate() + delta*7);
     _weekStart = d.toISOString().slice(0,10);
-    // Update currentMonth/Year to match
     currentYear = d.getFullYear();
     currentMonth = d.getMonth();
-    buildWeekView();
+    if (_calMode==='athletes' && currentUser?.role==='admin') renderAthleteCalendar();
+    else renderCalendar();
     updateCalHeader();
   } else {
     currentMonth += delta;
@@ -6390,6 +6389,8 @@ function setCalMode(mode) {
     logBtn.style.display = '';
     _activeAthleteId = null;
     renderCalendar();
+    // Restore own monthly goal
+    if (currentUser) renderMonthlyGoal(currentUser.id, currentYear, currentMonth);
   }
 }
 
@@ -6456,9 +6457,16 @@ async function renderAthleteCalendar() {
     _athCoachNotes = {};
     (coachNotes||[]).forEach(n => { _athCoachNotes[n.date] = {id:n.id, note:n.note}; });
   } catch(e) { console.error('Athlete calendar load error',e); }
-  buildAthleteCalGrid();
-  buildAthleteWeekStrip();
+  updateCalHeader();
+  if (_calView === 'week') {
+    buildAthleteWeekView();
+  } else {
+    buildAthleteCalGrid();
+    buildAthleteWeekStrip();
+  }
   renderAthleteDayPanel(selectedDate);
+  // Show this athlete's monthly goal
+  renderMonthlyGoal(_activeAthleteId, currentYear, currentMonth);
 }
 
 function getAthletePlannedWorkouts(ds) {
@@ -6489,6 +6497,63 @@ function getAthletePlannedWorkouts(ds) {
 function getAthletePlannedWorkout(ds) {
   // Legacy single accessor — returns first planned workout
   return getAthletePlannedWorkouts(ds)[0]||null;
+}
+
+function buildAthleteWeekView() {
+  const grid = document.getElementById('cal-week-grid');
+  if (!grid) return;
+  const today = todayStr();
+  const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const ath = _athleteList.find(a=>a.id===_activeAthleteId);
+  const color = ath?.color||ATHLETE_COLORS[0];
+
+  let html = '<div class="week-view-grid">';
+  for (let i=0; i<7; i++) {
+    const d = new Date(_weekStart+'T12:00:00');
+    d.setDate(d.getDate()+i);
+    const ds = d.toISOString().slice(0,10);
+    const isToday = ds===today;
+    const isSelected = ds===selectedDate;
+    const logs = _athCalWorkouts[ds]||[];
+    const plannedList = getAthletePlannedWorkouts(ds);
+    const assigned = _athCalAssigned[ds]||[];
+
+    let chips = '';
+    if (logs.length) {
+      logs.forEach(w=>{
+        chips += `<div class="week-workout-chip week-workout-logged" style="background:${color.dim};color:${color.hex};border:1px solid ${color.hex}30">✓ ${w.day_name||w.name||'Workout'}</div>`;
+      });
+    } else if (assigned.length) {
+      chips += `<div class="week-workout-chip" style="background:var(--purple-light);color:var(--purple)">📤 ${assigned[0].workout_name}</div>`;
+    } else {
+      plannedList.forEach(p=>{
+        chips += `<div class="week-workout-chip week-workout-planned" style="background:${color.dim};color:${color.hex}">· ${p.name}</div>`;
+      });
+    }
+    if (!chips) chips = `<div class="week-day-empty">Rest</div>`;
+
+    html += `<div class="week-day-col ${isToday?'today':''} ${isSelected?'selected':''}" onclick="selectAthleteDay('${ds}')">
+      <div class="week-day-header">
+        <div class="week-day-dow">${dows[d.getDay()]}</div>
+        <div class="week-day-num">${isToday?`<div style="background:var(--orange);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">${d.getDate()}</div>`:d.getDate()}</div>
+      </div>
+      <div class="week-day-body">${chips}</div>
+    </div>`;
+  }
+  html += '</div>';
+  grid.innerHTML = html;
+  renderAthleteDayPanel(selectedDate);
+}
+
+function selectAthleteDay(ds) {
+  selectedDate = ds;
+  if (_calView === 'week') {
+    buildAthleteWeekView();
+  } else {
+    buildAthleteCalGrid();
+    buildAthleteWeekStrip();
+    renderAthleteDayPanel(ds);
+  }
 }
 
 function buildAthleteCalGrid() {
@@ -6564,13 +6629,6 @@ function buildAthleteWeekStrip() {
     </div>`;
   }
   strip.innerHTML = html;
-}
-
-function selectAthleteDay(ds) {
-  selectedDate = ds;
-  buildAthleteCalGrid();
-  buildAthleteWeekStrip();
-  renderAthleteDayPanel(ds);
 }
 
 async function renderAthleteDayPanel(ds) {
@@ -7632,12 +7690,16 @@ async function renderMonthlyGoal(userId, year, month) {
 
   const {count, goal, pct, hit, streak} = data;
   const monthName = new Date(year, month, 1).toLocaleString('en-US',{month:'long'});
+  // Show athlete name if viewing an athlete's goal
+  const isAthlete = _activeAthleteId && userId !== currentUser?.id;
+  const ath = isAthlete ? _athleteList.find(a=>a.id===userId) : null;
+  const goalLabel = ath ? `${ath.username}'s ${monthName} Goal` : `${monthName} Goal`;
 
   // Update calendar bar
   const bar = document.getElementById('monthly-goal-bar');
   if (bar) {
     bar.style.display = '';
-    document.getElementById('goal-month-label').textContent = `${monthName} Goal`;
+    document.getElementById('goal-month-label').textContent = goalLabel;
     document.getElementById('goal-count-label').textContent = `${count}/${goal}`;
     const fill = document.getElementById('goal-progress-fill');
     if (fill) {
