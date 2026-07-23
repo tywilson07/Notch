@@ -1755,6 +1755,8 @@ async function renderDayPanel(ds) {
           noteEl.innerHTML = `<span style="font-size:14px;flex-shrink:0">📝</span>
             <div class="coach-note-bar-text"><strong>Coach note:</strong> ${n.note}</div>`;
           body.insertBefore(noteEl, body.firstChild);
+          // Toast so Lauren notices the note
+          toast('📝 New coach note on this workout!');
         }
       }
     } catch(e) { /* non-critical */ }
@@ -2092,6 +2094,19 @@ async function editLog(ds, id) {
     if(w.exercises&&w.exercises.length){
       _logExercises=w.exercises.map(e=>({...e,sets:(e.sets||[]).map(s=>({...s})),cardio:e.cardio?{...e.cardio}:null,expanded:false}));
     } else { _logExercises=[]; }
+
+    // Re-attach targetReps/targetSets from the program schedule so the target hint shows
+    const plannedList = getPlannedWorkouts(ds);
+    const allPlannedExs = plannedList.flatMap(p=>[...(p.exercises||[]),...(p.warmup||[]),...(p.cooldown||[])]);
+    _logExercises = _logExercises.map(ex => {
+      if (ex.targetReps || ex.targetSets) return ex; // already has targets
+      const match = allPlannedExs.find(p => (typeof p === 'object' ? p.name : p) === ex.name);
+      if (match && typeof match === 'object' && (match.sets || match.reps)) {
+        return {...ex, targetSets: parseInt(match.sets)||null, targetReps: match.reps||null};
+      }
+      return ex;
+    });
+
     if(_logExercises.length) _logExercises[0].expanded=true;
     document.getElementById('modal-title').textContent=`Edit — ${w.day_name||'Workout'}`;
     showModal();
@@ -3332,7 +3347,10 @@ function buildProgramModal(prog){
         <div class="field"><label>Day</label><select onchange="cpDayField(${i},'dow',this.value)">${dowOpts}</select></div>
         <div class="field"><label>Day Name</label><input value="${d.name||''}" placeholder="e.g. Push Day" onchange="cpDayField(${i},'name',this.value)"></div>
       </div>
-      <button class="btn btn-white btn-xs" onclick="loadTemplateIntoDay(${i})" style="margin-bottom:10px;width:100%">📁 Load from Template</button>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="btn btn-white btn-xs" onclick="loadTemplateIntoDay(${i})" style="flex:1">📁 Load from Template</button>
+        <button class="btn btn-white btn-xs" onclick="saveDayAsTemplate(${i})" style="flex:1">💾 Save as Template</button>
+      </div>
       <div style="display:flex;flex-direction:column;gap:8px">
 
         <!-- WARM-UP -->
@@ -6282,6 +6300,66 @@ function applyTemplateToDay(dayIdx, templateId) {
 
 // renderAssignWorkout template hookup moved into renderAssignWorkout directly
 
+async function saveDayAsTemplate(dayIdx) {
+  cpSyncAll();
+  const day = _cpDays[dayIdx];
+  if (!day) return;
+  // Check there's something worth saving
+  const hasExercises = (day.exercises||[]).length > 0 ||
+                       (day.warmup||[]).length > 0 ||
+                       (day.cooldown||[]).length > 0;
+  if (!hasExercises) { toast('Add some exercises first'); return; }
+
+  const defaultName = day.name || 'Workout Template';
+  document.getElementById('modal-title').textContent = '💾 Save as Template';
+  document.getElementById('modal-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+      Save this workout day as a reusable template. Find it later under <strong>Templates</strong> or load it into any program.
+    </div>
+    <div class="field">
+      <label>Template Name</label>
+      <input id="save-day-tmpl-name" type="text" value="${defaultName}"
+        style="font-size:15px;padding:10px;font-family:var(--font)">
+    </div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="confirmSaveDayAsTemplate(${dayIdx})">Save Template</button>`;
+  showModal();
+}
+
+async function confirmSaveDayAsTemplate(dayIdx) {
+  const name = document.getElementById('save-day-tmpl-name')?.value?.trim();
+  if (!name) { toast('Enter a name'); return; }
+  cpSyncAll();
+  const day = _cpDays[dayIdx];
+  if (!day) return;
+
+  const normalizeEx = arr => (arr||[])
+    .filter(e => typeof e === 'string' ? e : e.name)
+    .map(e => typeof e === 'string'
+      ? {name:e, sets:'', reps:''}
+      : {name:e.name||'', sets:e.sets||'', reps:e.reps||''});
+
+  const payload = {
+    name,
+    description: `Saved from program builder`,
+    warmup:    normalizeEx(day.warmup),
+    exercises: normalizeEx(day.exercises),
+    cooldown:  normalizeEx(day.cooldown),
+    coach_notes: day.coachNotes || '',
+    created_by: currentUser.id
+  };
+
+  try {
+    await db('workout_templates', 'POST', payload);
+    closeModal();
+    toast(`"${name}" saved as template ✓`);
+  } catch(e) {
+    toast('Save failed — try again');
+    console.error(e);
+  }
+}
+
 async function loadTemplateIntoAssign() {
   const lib = await db('workout_templates','GET',null,
     `?created_by=eq.${currentUser.id}&select=*&order=name.asc`);
@@ -6339,6 +6417,10 @@ async function saveCompletionFeedback() {
       await db('workouts','PATCH',
         {feedback_rating:_selectedFeedback||null, feedback_note:note||null},
         `?id=eq.${_lastSavedWorkoutId}`);
+      // If athlete left a note, badge the Athletes nav for the coach
+      if (note && currentUser?.role !== 'admin') {
+        updateAthleteBadge?.();
+      }
     } catch(e) { console.error('Feedback save failed',e); }
   }
   _selectedFeedback = null;
@@ -6372,6 +6454,7 @@ let _athCalWorkouts = {};   // athlete's logged workouts
 let _athCalAssigned = {};   // athlete's assigned workouts
 let _athCalPrograms = [];
 let _athActiveProgAssignments = []; // [{id, program_id, start_date}] — supports multiple simultaneous programs
+let _athCalOverrides = {};  // athlete's planned workout moves {originalDate: {newDate, workoutName, programId}}
 let _athCoachNotes = {};    // {date: noteText} pre-log coach notes for this athlete
 
 function setCalMode(mode) {
@@ -6441,12 +6524,13 @@ async function renderAthleteCalendar() {
     const endDate   = dateStr(currentYear, currentMonth, new Date(currentYear,currentMonth+1,0).getDate());
     const queryStart = (() => { const d = new Date(startDate+'T12:00:00'); d.setDate(d.getDate()-6); return d.toISOString().slice(0,10); })();
     const queryEnd   = (() => { const d = new Date(endDate+'T12:00:00');   d.setDate(d.getDate()+6); return d.toISOString().slice(0,10); })();
-    const [wkts, progs, assigns, assigned, coachNotes] = await Promise.all([
+    const [wkts, progs, assigns, assigned, coachNotes, overrides] = await Promise.all([
       db('workouts','GET',null,`?user_id=eq.${_activeAthleteId}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
       db('programs','GET',null,'?select=*'),
       db('program_assignments','GET',null,`?user_id=eq.${_activeAthleteId}&select=*`),
       db('workout_assignments','GET',null,`?assigned_to=eq.${_activeAthleteId}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
-      db('workout_coach_notes','GET',null,`?athlete_id=eq.${_activeAthleteId}&coach_id=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`)
+      db('workout_coach_notes','GET',null,`?athlete_id=eq.${_activeAthleteId}&coach_id=eq.${currentUser.id}&date=gte.${queryStart}&date=lte.${queryEnd}&select=*`),
+      db('workout_schedule_overrides','GET',null,`?user_id=eq.${_activeAthleteId}&select=*`).catch(()=>[])
     ]);
     _athCalWorkouts = {};
     (wkts||[]).forEach(w => { if(!_athCalWorkouts[w.date])_athCalWorkouts[w.date]=[]; _athCalWorkouts[w.date].push(w); });
@@ -6456,6 +6540,11 @@ async function renderAthleteCalendar() {
     _athActiveProgAssignments = (assigns||[]).filter(a=>a.active).map(a=>({id:a.id, program_id:a.program_id, start_date:a.start_date||null}));
     _athCoachNotes = {};
     (coachNotes||[]).forEach(n => { _athCoachNotes[n.date] = {id:n.id, note:n.note}; });
+    // Build athlete overrides map so coach view respects moves (not just copies)
+    _athCalOverrides = {};
+    (overrides||[]).forEach(o => {
+      _athCalOverrides[o.original_date] = {newDate:o.new_date, workoutName:o.workout_name, id:o.id, programId:o.program_id||null};
+    });
   } catch(e) { console.error('Athlete calendar load error',e); }
   updateCalHeader();
   if (_calView === 'week') {
@@ -6470,8 +6559,8 @@ async function renderAthleteCalendar() {
 }
 
 function getAthletePlannedWorkouts(ds) {
-  // Returns array — supports multiple simultaneously active programs for this athlete
   if (!_athActiveProgAssignments.length) return [];
+  const overrides = _athCalOverrides || {};
   const dow = new Date(ds+'T12:00:00').getDay();
   const results = [];
 
@@ -6487,8 +6576,24 @@ function getAthletePlannedWorkouts(ds) {
       if (dsMs < startMs || dsMs >= endMs) return;
     }
 
-    const planned = prog.schedule.find(s=>parseInt(s.dow)===dow);
-    if (planned) results.push({...planned, programId:prog.id, programName:prog.name});
+    const matchesThisProg = (ov) => !ov.programId || ov.programId === prog.id;
+
+    // Workouts moved TO this date
+    Object.entries(overrides).forEach(([origDate, ov]) => {
+      if (ov.newDate !== ds || !matchesThisProg(ov)) return;
+      const origDow = new Date(origDate+'T12:00:00').getDay();
+      const planned = prog.schedule.find(s=>parseInt(s.dow)===origDow);
+      if (planned) results.push({...planned, movedFrom:origDate, programId:prog.id, programName:prog.name});
+    });
+
+    // Normal scheduled workout if not moved away
+    const movedAway = overrides[ds] && matchesThisProg(overrides[ds]);
+    if (!movedAway) {
+      const planned = prog.schedule.find(s=>parseInt(s.dow)===dow);
+      // Skip if already added as moved-in
+      const alreadyMovedIn = planned && results.some(x=>x.programId===prog.id && x.name===planned.name && x.movedFrom);
+      if (planned && !alreadyMovedIn) results.push({...planned, programId:prog.id, programName:prog.name});
+    }
   });
 
   return results;
@@ -6797,11 +6902,30 @@ async function editCoachNoteOnWorkout(workoutId, existingNote) {
 async function saveCoachNoteOnWorkout(workoutId) {
   const note = document.getElementById('coach-note-wkt-input')?.value?.trim()||'';
   try {
+    // Write to workouts table (coach view)
     await db('workouts','PATCH',{coach_note:note},`?id=eq.${workoutId}`);
+    // Also write to workout_coach_notes so athlete can see it in their day panel
+    const wkt = await db('workouts','GET',null,`?id=eq.${workoutId}&select=date,user_id`);
+    if (wkt?.[0]) {
+      const {date, user_id} = wkt[0];
+      const existing = await db('workout_coach_notes','GET',null,
+        `?athlete_id=eq.${user_id}&coach_id=eq.${currentUser.id}&date=eq.${date}&select=id`);
+      if (existing?.length) {
+        await db('workout_coach_notes','PATCH',{note},`?id=eq.${existing[0].id}`);
+      } else {
+        await db('workout_coach_notes','POST',{
+          coach_id:currentUser.id, athlete_id:user_id, date, note
+        });
+      }
+    }
     closeModal();
-    toast('Note saved');
+    toast('Note saved ✓');
     await renderAthleteCalendar();
-  } catch(e) { toast('Save failed'); }
+    // Store notification for athlete
+    try {
+      await db('workouts','PATCH',{has_coach_note:true},`?id=eq.${workoutId}`);
+    } catch(e) { /* non-critical */ }
+  } catch(e) { toast('Save failed'); console.error(e); }
 }
 
 // renderDayPanel patch removed — logic folded into renderDayPanel directly
@@ -6843,11 +6967,13 @@ async function updateAthleteBadge() {
     const allUsers = await db('users','GET',null,'?select=id&role=eq.athlete');
     if (!allUsers?.length) return;
     const ids = allUsers.map(u=>`"${u.id}"`).join(',');
-    // Check for any athlete workouts in the last 24h
-    const recent = await db('workouts','GET',null,
-      `?user_id=in.(${ids})&logged_at=gte.${since}&select=id&limit=1`);
+    // Check for any athlete workouts in the last 24h OR feedback notes
+    const [recent, feedbackNotes] = await Promise.all([
+      db('workouts','GET',null,`?user_id=in.(${ids})&logged_at=gte.${since}&select=id&limit=1`),
+      db('workouts','GET',null,`?user_id=in.(${ids})&feedback_note=not.is.null&logged_at=gte.${since}&select=id&limit=1`)
+    ]);
     const badge = document.getElementById('athletes-badge');
-    if (recent?.length && badge) {
+    if ((recent?.length || feedbackNotes?.length) && badge) {
       badge.style.display = 'flex';
     }
   } catch(e) { /* non-critical */ }
